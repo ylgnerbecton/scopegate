@@ -1,0 +1,115 @@
+{
+  "stage": "specified",
+  "authority": "Restricted operations credential, private input location, organization scope and audited approval. No web endpoint can switch authority.",
+  "commands": [
+    {
+      "command": "scopegate migration profile",
+      "required_arguments": [
+        "input-directory",
+        "snapshot-hash"
+      ],
+      "input_gates": [
+        "Private source snapshot available"
+      ],
+      "outputs": [
+        "Source totals, anomalies, immutable snapshot reference"
+      ],
+      "implemented": false
+    },
+    {
+      "command": "scopegate migration backfill",
+      "required_arguments": [
+        "run-id",
+        "transform-version",
+        "identity-map",
+        "entitlement-map"
+      ],
+      "input_gates": [
+        "Reviewed mappings or explicit review-required dispositions",
+        "Correct writer ownership epoch"
+      ],
+      "outputs": [
+        "Ledger outcomes and target candidate rows; repeatable dry run by default"
+      ],
+      "implemented": false
+    },
+    {
+      "command": "scopegate migration compare",
+      "required_arguments": [
+        "run-id",
+        "organization-id",
+        "baseline-manifest"
+      ],
+      "input_gates": [
+        "Verified resolver or reviewed intended-access baseline",
+        "Consistent source/target snapshot"
+      ],
+      "outputs": [
+        "Allow/deny manifest including missing decisions and mismatch counts"
+      ],
+      "implemented": false
+    },
+    {
+      "command": "scopegate migration fence",
+      "required_arguments": [
+        "organization-id",
+        "expected-epoch"
+      ],
+      "input_gates": [
+        "All live writers identified and enforced by routing/credentials"
+      ],
+      "outputs": [
+        "Write fence active and epoch advanced; drain status"
+      ],
+      "implemented": false
+    },
+    {
+      "command": "scopegate migration cutover",
+      "required_arguments": [
+        "organization-id",
+        "expected-epoch",
+        "approved-run-id"
+      ],
+      "input_gates": [
+        "Fence active and all deltas drained",
+        "Zero unreviewed gains/losses",
+        "Identity and consumer integration gates passed",
+        "Operations and policy owner approve concrete manifest"
+      ],
+      "outputs": [
+        "Target authority audit; fence stays until routing probes pass"
+      ],
+      "implemented": false
+    },
+    {
+      "command": "scopegate migration unfence",
+      "required_arguments": [
+        "organization-id",
+        "expected-epoch"
+      ],
+      "input_gates": [
+        "Current authority/routing probes verified"
+      ],
+      "outputs": [
+        "Writer fence cleared under exclusive organization lock"
+      ],
+      "implemented": false
+    },
+    {
+      "command": "scopegate migration contract",
+      "required_arguments": [
+        "retirement-manifest",
+        "approved-change-id"
+      ],
+      "input_gates": [
+        "Every organization has terminal disposition",
+        "Retention and rollback windows elapsed",
+        "No residual legacy consumers"
+      ],
+      "outputs": [
+        "Retirement report; no engine upgrade included"
+      ],
+      "implemented": false
+    }
+  ]
+}

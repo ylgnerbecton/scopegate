@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "project": "Scopegate",
+  "contract_type": "service_objectives",
+  "status": "proposed",
+  "implemented": false,
+  "contractual_sla": null,
+  "owners": ["platform_owner", "product_owner", "security_owner", "identity_owner", "delivery_owner"],
+  "canonical_documents": ["docs/RELIABILITY_DESIGN.md", "docs/CAPACITY_PLAN.md", "docs/DELIVERY_SYSTEM.md"],
+  "parameters": {
+    "availability_target": {"value": 0.999, "unit": "good_requests_per_eligible_request", "minimum": 0.99, "maximum": 0.9999, "owner": "platform_owner", "evidence_gate": "G-OPERATIONS"},
+    "availability_window": {"value": 30, "unit": "rolling_days", "minimum": 1, "maximum": 30, "owner": "product_owner", "evidence_gate": "G-OPERATIONS"},
+    "latency_target": {"value": 0.95, "unit": "within_endpoint_budget_per_eligible_attempt", "minimum": 0.9, "maximum": 0.999, "owner": "platform_owner", "evidence_gate": "G-PERFORMANCE"},
+    "delivery_target": {"value": 0.99, "unit": "provider_accepted_messages_per_eligible_message", "minimum": 0.95, "maximum": 1.0, "owner": "delivery_owner", "evidence_gate": "G-OPERATIONS"},
+    "delivery_latency": {"value": 300, "unit": "seconds_from_intent_commit", "minimum": 30, "maximum": 300, "owner": "delivery_owner", "evidence_gate": "G-OPERATIONS"},
+    "outbox_age_alert": {"value": 300, "unit": "seconds_oldest_due", "minimum": 60, "maximum": 300, "owner": "delivery_owner", "evidence_gate": "G-OPERATIONS"},
+    "protected_probe_interval": {"value": 60, "unit": "seconds", "minimum": 30, "maximum": 300, "owner": "platform_owner", "evidence_gate": "G-OPERATIONS"},
+    "identity_journey_probe_interval": {"value": 300, "unit": "seconds", "minimum": 60, "maximum": 900, "owner": "identity_owner", "evidence_gate": "G-IDENTITY"},
+    "probe_unavailability_page_threshold": {"value": 2, "unit": "consecutive_failures", "minimum": 1, "maximum": 3, "owner": "platform_owner", "evidence_gate": "G-OPERATIONS"},
+    "normal_trace_sample": {"value": 0.1, "unit": "fraction", "minimum": 0.0, "maximum": 1.0, "owner": "platform_owner", "evidence_gate": "G-OPERATIONS"},
+    "diagnostic_log_retention": {"value": 14, "unit": "days", "minimum": 1, "maximum": 30, "owner": "security_owner", "evidence_gate": "G-SECURITY"},
+    "diagnostic_trace_retention": {"value": 7, "unit": "days", "minimum": 1, "maximum": 14, "owner": "security_owner", "evidence_gate": "G-SECURITY"}
+  },
+  "availability_indicator": {
+    "id": "SLI-REQUEST-AVAILABILITY",
+    "measurement_boundary": "service edge joined to application outcome",
+    "denominator": "all eligible supported attempts, including overload, server failure, dependency failure, gateway timeout, accepted user timeout, and unknown accepted outcome",
+    "numerator": "eligible attempts completed correctly within their absolute request deadline, including intended safe authorization denials",
+    "good_expected_outcomes": ["successful durable operation", "valid bounded read", "correct concealed 404", "correct visible-scope 403", "documented state or version conflict"],
+    "bad_outcomes": ["unexpected server failure", "gateway timeout", "overload rejection", "dependency unavailable", "accepted user timeout", "missing outcome", "incorrect response"],
+    "exclusions": ["unsupported route", "malformed client request", "documented deliberate quota violation", "client cancellation proven before admission", "explicit synthetic probe measured separately"],
+    "never_exclude": ["planned maintenance", "deployment failure", "accepted user timeout", "load shedding", "external dependency failure"],
+    "excluded_counters_visible": true,
+    "unknown_outcome_default": "bad until reconciled",
+    "owner": "platform_owner"
+  },
+  "latency_indicator": {
+    "id": "SLI-REQUEST-LATENCY",
+    "budget_source": "specs/contracts/capacity.json endpoint_budgets",
+    "measurement_boundary": "edge arrival to completed response, including admission and dependency wait",
+    "denominator": "eligible request attempts within each endpoint class",
+    "numerator": "eligible attempts correctly completed within their endpoint budget",
+    "report": ["offered", "admitted", "completed", "overloaded", "timed_out", "cancelled", "p50", "mean", "p95", "p99"],
+    "separate_outcome_distributions": ["allowed", "denied", "conflict", "unavailable"],
+    "deadline_exceeded_is_bad": true,
+    "timeout_samples_not_discarded": true,
+    "owner": "platform_owner"
+  },
+  "delivery_indicator": {
+    "id": "SLI-DELIVERY-FRESHNESS",
+    "denominator": "committed delivery intents for valid invitation requests with at least the target delivery window remaining at issuance",
+    "numerator": "eligible intents with provider acceptance evidence within delivery_latency of database commit",
+    "provider_ack_not_recipient_read": true,
+    "provider_ack_not_invitation_acceptance": true,
+    "temporary_or_permanent_provider_failure_is_bad": true,
+    "excluded_expiry_before_window_visible": true,
+    "owner": "delivery_owner"
+  },
+  "correctness_invariants": {
+    "confirmed_unsafe_allow_tolerance": 0,
+    "unreviewed_access_gain_tolerance": 0,
+    "unreviewed_access_loss_tolerance": 0,
+    "lost_revocation_tolerance": 0,
+    "missing_mutation_audit_tolerance": 0,
+    "error_budget_cannot_waive": true,
+    "action": "page security and engineering owners; fence affected operation and stop cohort expansion"
+  },
+  "error_budget": {
+    "permitted_bad_requests_formula": "(1 - availability_target) * eligible_requests",
+    "burn_rate_formula": "observed_bad_fraction / (1 - availability_target)",
+    "uniform_traffic_time_equivalent_minutes": 43.2,
+    "time_equivalent_is_not_request_accounting": true,
+    "no_eligible_requests_state": "insufficient sample; neither success nor failure ratio fabricated",
+    "exhaustion_action": "pause feature rollout; prioritize reliability repair; incident owner approves resumption",
+    "owner": "platform_owner"
+  },
+  "burn_alerts": [
+    {"id": "ALERT-FAST-BURN", "severity": "page", "long_window_seconds": 3600, "short_window_seconds": 300, "burn_rate": 14.4, "both_windows_required": true, "budget_fraction_in_long_window": 0.02, "owner": "platform_owner", "playbook": "availability_burn"},
+    {"id": "ALERT-SLOW-BURN", "severity": "page", "long_window_seconds": 21600, "short_window_seconds": 1800, "burn_rate": 6.0, "both_windows_required": true, "budget_fraction_in_long_window": 0.05, "owner": "platform_owner", "playbook": "availability_burn"},
+    {"id": "ALERT-PERSISTENT-BURN", "severity": "ticket", "long_window_seconds": 259200, "short_window_seconds": 21600, "burn_rate": 1.0, "both_windows_required": true, "budget_fraction_in_long_window": 0.1, "owner": "platform_owner", "playbook": "availability_burn"}
+  ],
+  "low_traffic_policy": {
+    "report_sample_count": true,
+    "minimum_sample_never_hides_incident": true,
+    "protected_allow_and_deny_synthetic_probes": true,
+    "confirmed_invariant_violation_pages_immediately": true,
+    "identity_journey_tracked_separately": true,
+    "synthetic_results_do_not_replace_user_sli": true,
+    "actual_provider_probe_credentials_require_owner_approval": true
+  },
+  "telemetry": {
+    "implementation": "OpenTelemetry with W3C trace context",
+    "metric_label_allowlist": ["environment", "service", "route_template", "operation", "dependency", "status_class", "bounded_reason_code", "authority_mode"],
+    "metric_label_forbidden": ["organization_id", "user_id", "project_id", "resource_id", "email", "invitation_id", "delivery_key", "request_id", "trace_id", "raw_path"],
+    "log_fields": ["service_version", "environment", "route_template", "operation", "outcome_code", "duration_ms", "request_id", "correlation_id", "trace_id", "safe_actor_reference", "safe_organization_reference", "dependency_error_class", "validated_field_names", "bounded_item_counts", "request_digest", "restricted_audit_reference"],
+    "forbidden_diagnostic_content": ["cookies", "tokens", "raw_invitation_link", "provider_response_payload", "raw_contact_content", "complete_resource_payload", "encryption_key", "raw_request_body"],
+    "baggage_allowlist": ["environment", "bounded_operation_class"],
+    "strip_baggage_at_external_provider": true,
+    "baggage_never_authorizes": true,
+    "transactional_audit_sampled": false,
+    "diagnostic_buffer_bounded": true,
+    "telemetry_drop_and_cardinality_rejection_visible": true,
+    "audit_journal_retention": "live data-owner input; cannot be inferred from diagnostic retention",
+    "owner": "platform_owner"
+  },
+  "dashboards": [
+    "request availability and burn",
+    "endpoint latency and offered versus completed work",
+    "admission and pool waits",
+    "connections and database locks",
+    "grant version conflicts",
+    "outbox due age attempts leases and dead letters",
+    "ciphertext purge backlog",
+    "identity known-key and claim failures",
+    "migration decision differences and ownership epochs",
+    "journal gaps and restore reconciliation"
+  ],
+  "validation_rules": [
+    "all parameter values lie within declared inclusive ranges",
+    "availability_target < 1 for finite nonzero burn-rate calculation",
+    "burn short window is less than long window",
+    "budget_fraction_in_long_window = burn_rate * long_window_seconds / (availability_window * 86400)",
+    "time_equivalent_minutes = availability_window * 1440 * (1 - availability_target)",
+    "excluded user timeout or overload is a contract failure",
+    "PII or secret telemetry field is a security failure",
+    "no contractual SLA can be inferred from proposed objectives or a synthetic run"
+  ],
+  "live_input_gates": ["product-approved objective", "traffic and job-cycle evidence", "edge timeout visibility", "host telemetry destination", "provider quota and probe policy", "retention approval", "named incident responder"],
+  "evidence_gates": ["G-PERFORMANCE", "G-SECURITY", "G-IDENTITY", "G-OPERATIONS", "G-RELEASE"]
+}

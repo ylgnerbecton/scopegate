@@ -1,0 +1,320 @@
+{
+  "purpose": "Decision examples for implementation tests; dynamic clocks and ownership must be checked by real services.",
+  "cases": [
+    {
+      "id": "POL-01",
+      "input": {
+        "authenticated": true,
+        "organization_active": true,
+        "membership_active": true,
+        "membership_unexpired": true,
+        "project_active": true,
+        "entitlement_active": true,
+        "resource_published": true,
+        "explicit_grant": true,
+        "role": "viewer",
+        "kind": "customer",
+        "organization_matches": true,
+        "project_matches": true
+      },
+      "expected": {
+        "allowed": true,
+        "reason": "allowed"
+      }
+    },
+    {
+      "id": "POL-02",
+      "input": {
+        "authenticated": false,
+        "organization_active": true,
+        "membership_active": true,
+        "membership_unexpired": true,
+        "project_active": true,
+        "entitlement_active": true,
+        "resource_published": true,
+        "explicit_grant": true,
+        "role": "viewer",
+        "kind": "customer",
+        "organization_matches": true,
+        "project_matches": true
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "unauthenticated"
+      }
+    },
+    {
+      "id": "POL-03",
+      "input": {
+        "authenticated": true,
+        "organization_active": false,
+        "membership_active": true,
+        "membership_unexpired": true,
+        "project_active": true,
+        "entitlement_active": true,
+        "resource_published": true,
+        "explicit_grant": true,
+        "role": "viewer",
+        "kind": "customer",
+        "organization_matches": true,
+        "project_matches": true
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "organization_inactive"
+      }
+    },
+    {
+      "id": "POL-04",
+      "input": {
+        "authenticated": true,
+        "organization_active": true,
+        "membership_active": false,
+        "membership_unexpired": true,
+        "project_active": true,
+        "entitlement_active": true,
+        "resource_published": true,
+        "explicit_grant": true,
+        "role": "viewer",
+        "kind": "customer",
+        "organization_matches": true,
+        "project_matches": true
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "membership_inactive"
+      }
+    },
+    {
+      "id": "POL-05",
+      "input": {
+        "authenticated": true,
+        "organization_active": true,
+        "membership_active": true,
+        "membership_unexpired": false,
+        "project_active": true,
+        "entitlement_active": true,
+        "resource_published": true,
+        "explicit_grant": true,
+        "role": "viewer",
+        "kind": "customer",
+        "organization_matches": true,
+        "project_matches": true
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "membership_expired"
+      }
+    },
+    {
+      "id": "POL-06",
+      "input": {
+        "authenticated": true,
+        "organization_active": true,
+        "membership_active": true,
+        "membership_unexpired": true,
+        "project_active": false,
+        "entitlement_active": true,
+        "resource_published": true,
+        "explicit_grant": true,
+        "role": "viewer",
+        "kind": "customer",
+        "organization_matches": true,
+        "project_matches": true
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "project_inactive"
+      }
+    },
+    {
+      "id": "POL-07",
+      "input": {
+        "authenticated": true,
+        "organization_active": true,
+        "membership_active": true,
+        "membership_unexpired": true,
+        "project_active": true,
+        "entitlement_active": false,
+        "resource_published": true,
+        "explicit_grant": true,
+        "role": "viewer",
+        "kind": "customer",
+        "organization_matches": true,
+        "project_matches": true
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "entitlement_inactive"
+      }
+    },
+    {
+      "id": "POL-08",
+      "input": {
+        "authenticated": true,
+        "organization_active": true,
+        "membership_active": true,
+        "membership_unexpired": true,
+        "project_active": true,
+        "entitlement_active": true,
+        "resource_published": false,
+        "explicit_grant": true,
+        "role": "viewer",
+        "kind": "customer",
+        "organization_matches": true,
+        "project_matches": true
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "resource_unpublished"
+      }
+    },
+    {
+      "id": "POL-09",
+      "input": {
+        "authenticated": true,
+        "organization_active": true,
+        "membership_active": true,
+        "membership_unexpired": true,
+        "project_active": true,
+        "entitlement_active": true,
+        "resource_published": true,
+        "explicit_grant": false,
+        "role": "viewer",
+        "kind": "customer",
+        "organization_matches": true,
+        "project_matches": true
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "grant_missing"
+      }
+    },
+    {
+      "id": "POL-10",
+      "input": {
+        "authenticated": true,
+        "organization_active": true,
+        "membership_active": true,
+        "membership_unexpired": true,
+        "project_active": true,
+        "entitlement_active": true,
+        "resource_published": true,
+        "explicit_grant": true,
+        "role": "viewer",
+        "kind": "customer",
+        "organization_matches": false,
+        "project_matches": true
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "organization_mismatch"
+      }
+    },
+    {
+      "id": "POL-11",
+      "input": {
+        "authenticated": true,
+        "organization_active": true,
+        "membership_active": true,
+        "membership_unexpired": true,
+        "project_active": true,
+        "entitlement_active": true,
+        "resource_published": true,
+        "explicit_grant": true,
+        "role": "viewer",
+        "kind": "customer",
+        "organization_matches": true,
+        "project_matches": false
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "project_mismatch"
+      }
+    },
+    {
+      "id": "POL-12",
+      "input": {
+        "authenticated": true,
+        "organization_active": true,
+        "membership_active": true,
+        "membership_unexpired": true,
+        "project_active": true,
+        "entitlement_active": true,
+        "resource_published": true,
+        "explicit_grant": false,
+        "role": "access_manager",
+        "kind": "customer",
+        "organization_matches": true,
+        "project_matches": true
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "grant_missing"
+      }
+    },
+    {
+      "id": "POL-13",
+      "input": {
+        "authenticated": true,
+        "organization_active": true,
+        "membership_active": true,
+        "membership_unexpired": true,
+        "project_active": true,
+        "entitlement_active": true,
+        "resource_published": true,
+        "explicit_grant": false,
+        "role": "access_manager",
+        "kind": "staff",
+        "organization_matches": true,
+        "project_matches": true
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "grant_missing"
+      }
+    },
+    {
+      "id": "POL-14",
+      "input": {
+        "authenticated": true,
+        "organization_active": true,
+        "membership_active": true,
+        "membership_unexpired": false,
+        "project_active": true,
+        "entitlement_active": true,
+        "resource_published": true,
+        "explicit_grant": true,
+        "role": "viewer",
+        "kind": "staff",
+        "organization_matches": true,
+        "project_matches": true
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "membership_expired"
+      }
+    },
+    {
+      "id": "POL-15",
+      "input": {
+        "authenticated": true,
+        "organization_active": true,
+        "membership_active": true,
+        "membership_unexpired": true,
+        "project_active": true,
+        "entitlement_active": true,
+        "resource_published": true,
+        "explicit_grant": true,
+        "role": "access_manager",
+        "kind": "staff",
+        "organization_matches": true,
+        "project_matches": true
+      },
+      "expected": {
+        "allowed": true,
+        "reason": "allowed"
+      }
+    }
+  ]
+}

@@ -1,0 +1,1026 @@
+{
+  "schema_version": 1,
+  "scenarios": [
+    {
+      "id": "F01-AC-01",
+      "gate_ids": [
+        "G-MIGRATION"
+      ],
+      "tests": [
+        "backend/tests/test_diagnosis.py::test_null_organization_metadata_has_bounded_safe_defaults"
+      ],
+      "documents": [
+        "docs/DIAGNOSIS.md",
+        "docs/PRODUCT.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F01-AC-02",
+      "gate_ids": [
+        "G-MIGRATION"
+      ],
+      "tests": [
+        "backend/tests/test_diagnosis.py::test_approval_rejection_precedes_any_organization_or_user_write"
+      ],
+      "documents": [
+        "docs/DIAGNOSIS.md",
+        "docs/PRODUCT.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F01-AC-03",
+      "gate_ids": [
+        "G-MIGRATION"
+      ],
+      "tests": [
+        "backend/tests/test_diagnosis.py::test_parameterized_search_is_literal_scoped_and_effective"
+      ],
+      "documents": [
+        "docs/DIAGNOSIS.md",
+        "docs/PRODUCT.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F01-AC-04",
+      "gate_ids": [
+        "G-MIGRATION"
+      ],
+      "tests": [
+        "backend/tests/test_diagnosis.py::test_assignment_failure_preserves_old_rows_in_the_same_transaction"
+      ],
+      "documents": [
+        "docs/DIAGNOSIS.md",
+        "docs/PRODUCT.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F01-AC-05",
+      "gate_ids": [
+        "G-RELEASE"
+      ],
+      "tests": [],
+      "documents": [
+        "docs/DIAGNOSIS.md",
+        "docs/PRODUCT.md"
+      ],
+      "note": "Documentary: evidence register identifies unavailable production consumers, identity owners and baseline. The local fixture proves no production parity."
+    },
+    {
+      "id": "F02-AC-01",
+      "gate_ids": [
+        "G-DATABASE"
+      ],
+      "tests": [
+        "backend/tests/test_access.py::test_staff_explicit_grants_in_two_accounts_lose_only_the_selected_account"
+      ],
+      "documents": [
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F02-AC-02",
+      "gate_ids": [
+        "G-IDENTITY"
+      ],
+      "tests": [
+        "backend/tests/test_identity.py::test_reauthentication_rotates_opaque_session_and_does_not_merge_email"
+      ],
+      "documents": [
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F02-AC-03",
+      "gate_ids": [
+        "G-CONTRACT"
+      ],
+      "tests": [
+        "backend/tests/test_contracts.py::test_database_rejects_foreign_project_associations"
+      ],
+      "documents": [
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F02-AC-04",
+      "gate_ids": [
+        "G-IDENTITY"
+      ],
+      "tests": [
+        "backend/tests/test_identity.py::test_production_rejects_fixture_configuration"
+      ],
+      "documents": [
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F02-AC-05",
+      "gate_ids": [
+        "G-DATABASE"
+      ],
+      "tests": [
+        "backend/tests/test_access.py::test_first_manager_insert_failure_rolls_back_new_organization"
+      ],
+      "documents": [
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F02-AC-06",
+      "gate_ids": [
+        "G-CONTRACT"
+      ],
+      "tests": [
+        "backend/tests/test_contracts.py::test_customer_cannot_promote_membership_role"
+      ],
+      "documents": [
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F03-AC-01",
+      "gate_ids": [
+        "G-DATABASE"
+      ],
+      "tests": [
+        "backend/tests/test_access.py::test_no_manager_role_or_staff_bypass"
+      ],
+      "documents": [
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md",
+        "docs/API.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F03-AC-02",
+      "gate_ids": [
+        "G-DATABASE"
+      ],
+      "tests": [
+        "backend/tests/test_access.py::test_staff_explicit_grants_in_two_accounts_lose_only_the_selected_account"
+      ],
+      "documents": [
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md",
+        "docs/API.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F03-AC-03",
+      "gate_ids": [
+        "G-DATABASE"
+      ],
+      "tests": [
+        "backend/tests/test_access.py::test_staff_expiry_is_checked_with_fresh_clock_after_lock_wait"
+      ],
+      "documents": [
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md",
+        "docs/API.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F03-AC-04",
+      "gate_ids": [
+        "G-DATABASE"
+      ],
+      "tests": [
+        "backend/tests/test_access.py::test_scoped_delta_receipt_and_cross_account_preservation"
+      ],
+      "documents": [
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md",
+        "docs/API.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F03-AC-05",
+      "gate_ids": [
+        "G-DATABASE"
+      ],
+      "tests": [
+        "backend/tests/test_access.py::test_two_editors_cannot_both_commit_same_version"
+      ],
+      "documents": [
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md",
+        "docs/API.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F03-AC-06",
+      "gate_ids": [
+        "G-DATABASE"
+      ],
+      "tests": [
+        "backend/tests/test_access.py::test_audit_insert_failure_rolls_back_grant_version_and_receipt"
+      ],
+      "documents": [
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md",
+        "docs/API.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F03-AC-07",
+      "gate_ids": [
+        "G-DATABASE"
+      ],
+      "tests": [
+        "backend/tests/test_access.py::test_protected_use_rereads_policy_after_waiting_for_revocation"
+      ],
+      "documents": [
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md",
+        "docs/API.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F03-AC-08",
+      "gate_ids": [
+        "G-DATABASE"
+      ],
+      "tests": [
+        "backend/tests/test_access.py::test_two_durable_managers_cannot_suspend_themselves_concurrently"
+      ],
+      "documents": [
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md",
+        "docs/API.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F03-AC-09",
+      "gate_ids": [
+        "G-CONTRACT"
+      ],
+      "tests": [
+        "backend/tests/test_contracts.py::test_http_protected_reports_and_scoped_negative_matrix"
+      ],
+      "documents": [
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md",
+        "docs/API.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F03-AC-10",
+      "gate_ids": [
+        "G-DATABASE"
+      ],
+      "tests": [
+        "backend/tests/test_access.py::test_entitlement_disable_is_reviewed_atomic_and_reenable_restores_nothing"
+      ],
+      "documents": [
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md",
+        "docs/API.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F03-AC-11",
+      "gate_ids": [
+        "G-DATABASE"
+      ],
+      "tests": [
+        "backend/tests/test_access.py::test_stale_impact_fails_without_side_effect"
+      ],
+      "documents": [
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md",
+        "docs/API.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F03-AC-12",
+      "gate_ids": [
+        "G-DATABASE"
+      ],
+      "tests": [
+        "backend/tests/test_access.py::test_destructive_entitlement_cap_rejects_without_changes"
+      ],
+      "documents": [
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md",
+        "docs/API.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F04-AC-01",
+      "gate_ids": [
+        "G-IDENTITY"
+      ],
+      "tests": [
+        "backend/tests/test_invitations.py::test_new_recipient_atomic_acceptance_and_matching_retry"
+      ],
+      "documents": [
+        "docs/API.md",
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F04-AC-02",
+      "gate_ids": [
+        "G-IDENTITY"
+      ],
+      "tests": [
+        "backend/tests/test_invitations.py::test_existing_manager_is_reused_without_downgrade"
+      ],
+      "documents": [
+        "docs/API.md",
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F04-AC-03",
+      "gate_ids": [
+        "G-IDENTITY"
+      ],
+      "tests": [
+        "backend/tests/test_invitations.py::test_wrong_or_unverified_recipient_is_concealed"
+      ],
+      "documents": [
+        "docs/API.md",
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F04-AC-04",
+      "gate_ids": [
+        "G-IDENTITY"
+      ],
+      "tests": [
+        "backend/tests/test_invitations.py::test_revoked_and_expired_invitation_have_no_membership"
+      ],
+      "documents": [
+        "docs/API.md",
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F04-AC-05",
+      "gate_ids": [
+        "G-IDENTITY"
+      ],
+      "tests": [
+        "backend/tests/test_invitations.py::test_same_token_acceptance_race_only_one_transition"
+      ],
+      "documents": [
+        "docs/API.md",
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F04-AC-06",
+      "gate_ids": [
+        "G-IDENTITY"
+      ],
+      "tests": [
+        "backend/tests/test_invitations.py::test_entitlement_change_rolls_back_new_membership"
+      ],
+      "documents": [
+        "docs/API.md",
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F04-AC-07",
+      "gate_ids": [
+        "G-OPERATIONS"
+      ],
+      "tests": [
+        "backend/tests/test_delivery.py::test_transient_failure_preserves_pending_then_exhausts_budget"
+      ],
+      "documents": [
+        "docs/API.md",
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F04-AC-08",
+      "gate_ids": [
+        "G-IDENTITY"
+      ],
+      "tests": [
+        "backend/tests/test_invitations.py::test_invitation_cannot_restore_suspended_member"
+      ],
+      "documents": [
+        "docs/API.md",
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F04-AC-09",
+      "gate_ids": [
+        "G-IDENTITY"
+      ],
+      "tests": [
+        "backend/tests/test_invitations.py::test_stale_provider_authentication_cannot_preview_or_accept",
+        "backend/tests/test_invitations.py::test_new_recipient_atomic_acceptance_and_matching_retry"
+      ],
+      "documents": [
+        "docs/API.md",
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F04-AC-10",
+      "gate_ids": [
+        "G-OPERATIONS"
+      ],
+      "tests": [
+        "backend/tests/test_delivery.py::test_crash_after_delivery_reuses_stable_local_receipt",
+        "backend/tests/test_delivery.py::test_lease_claim_is_exclusive_and_stale_ack_cannot_finish"
+      ],
+      "documents": [
+        "docs/API.md",
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F04-AC-11",
+      "gate_ids": [
+        "G-OPERATIONS"
+      ],
+      "tests": [
+        "backend/tests/test_delivery.py::test_reviewed_replay_retains_total_attempts_and_receipt",
+        "backend/tests/test_delivery.py::test_purge_removes_ciphertext_and_blocks_later_replay"
+      ],
+      "documents": [
+        "docs/API.md",
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F04-AC-12",
+      "gate_ids": [
+        "G-OPERATIONS"
+      ],
+      "tests": [
+        "backend/tests/test_delivery.py::test_resend_prevents_stale_pending_message_delivery"
+      ],
+      "documents": [
+        "docs/API.md",
+        "docs/DATA_MODEL.md",
+        "docs/SECURITY.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F05-AC-01",
+      "gate_ids": [
+        "G-DATABASE"
+      ],
+      "tests": [
+        "backend/tests/test_catalog.py::test_publisher_updates_version_and_explicit_null_without_changing_access"
+      ],
+      "documents": [
+        "docs/API.md",
+        "docs/DATA_MODEL.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F05-AC-02",
+      "gate_ids": [
+        "G-DATABASE"
+      ],
+      "tests": [
+        "backend/tests/test_catalog.py::test_same_publication_key_rejects_conflicting_payload",
+        "backend/tests/test_catalog.py::test_archive_is_terminal_and_stale_version_conflicts"
+      ],
+      "documents": [
+        "docs/API.md",
+        "docs/DATA_MODEL.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F05-AC-03",
+      "gate_ids": [
+        "G-DATABASE"
+      ],
+      "tests": [
+        "backend/tests/test_access.py::test_absent_requested_locale_exposes_resolved_fallback"
+      ],
+      "documents": [
+        "docs/API.md",
+        "docs/DATA_MODEL.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F05-AC-04",
+      "gate_ids": [
+        "G-DATABASE"
+      ],
+      "tests": [
+        "backend/tests/test_access.py::test_literal_search_and_cursor_scope_binding"
+      ],
+      "documents": [
+        "docs/API.md",
+        "docs/DATA_MODEL.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F05-AC-05",
+      "gate_ids": [
+        "G-CONTRACT"
+      ],
+      "tests": [
+        "backend/tests/test_contracts.py::test_http_protected_reports_and_scoped_negative_matrix"
+      ],
+      "documents": [
+        "docs/API.md",
+        "docs/DATA_MODEL.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F05-AC-06",
+      "gate_ids": [
+        "G-DATABASE"
+      ],
+      "tests": [
+        "backend/tests/test_access.py::test_saved_report_reauthorizes_after_revocation"
+      ],
+      "documents": [
+        "docs/API.md",
+        "docs/DATA_MODEL.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F05-AC-07",
+      "gate_ids": [
+        "G-DATABASE"
+      ],
+      "tests": [
+        "backend/tests/test_access.py::test_catalog_archive_waits_for_admitted_protected_output"
+      ],
+      "documents": [
+        "docs/API.md",
+        "docs/DATA_MODEL.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F05-AC-08",
+      "gate_ids": [
+        "G-DATABASE"
+      ],
+      "tests": [
+        "backend/tests/test_catalog.py::test_archive_is_terminal_and_stale_version_conflicts"
+      ],
+      "documents": [
+        "docs/API.md",
+        "docs/DATA_MODEL.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F06-AC-01",
+      "gate_ids": [
+        "G-MIGRATION"
+      ],
+      "tests": [
+        "backend/tests/test_migration.py::test_profile_accounts_for_every_element_and_replay_is_idempotent"
+      ],
+      "documents": [
+        "docs/MIGRATION.md",
+        "docs/DIAGNOSIS.md",
+        "docs/DATA_MODEL.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F06-AC-02",
+      "gate_ids": [
+        "G-MIGRATION"
+      ],
+      "tests": [
+        "backend/tests/test_migration.py::test_unverified_identity_and_unknown_baseline_remain_unresolved"
+      ],
+      "documents": [
+        "docs/MIGRATION.md",
+        "docs/DIAGNOSIS.md",
+        "docs/DATA_MODEL.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F06-AC-03",
+      "gate_ids": [
+        "G-MIGRATION"
+      ],
+      "tests": [
+        "backend/tests/test_migration.py::test_profile_accounts_for_every_element_and_replay_is_idempotent"
+      ],
+      "documents": [
+        "docs/MIGRATION.md",
+        "docs/DIAGNOSIS.md",
+        "docs/DATA_MODEL.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F06-AC-04",
+      "gate_ids": [
+        "G-MIGRATION"
+      ],
+      "tests": [
+        "backend/tests/test_migration.py::test_unscoped_writer_and_stale_epoch_are_rejected"
+      ],
+      "documents": [
+        "docs/MIGRATION.md",
+        "docs/DIAGNOSIS.md",
+        "docs/DATA_MODEL.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F06-AC-05",
+      "gate_ids": [
+        "G-MIGRATION"
+      ],
+      "tests": [
+        "backend/tests/test_migration.py::test_gain_and_unknown_decisions_block_cutover"
+      ],
+      "documents": [
+        "docs/MIGRATION.md",
+        "docs/DIAGNOSIS.md",
+        "docs/DATA_MODEL.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F06-AC-06",
+      "gate_ids": [
+        "G-OPERATIONS"
+      ],
+      "tests": [
+        "backend/tests/test_operations.py::test_compatible_rollback_keeps_target_authority_and_revocation"
+      ],
+      "documents": [
+        "docs/MIGRATION.md",
+        "docs/DIAGNOSIS.md",
+        "docs/DATA_MODEL.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F06-AC-07",
+      "gate_ids": [
+        "G-MIGRATION"
+      ],
+      "tests": [
+        "backend/tests/test_migration.py::test_unapplied_high_watermark_keeps_tenant_fenced"
+      ],
+      "documents": [
+        "docs/MIGRATION.md",
+        "docs/DIAGNOSIS.md",
+        "docs/DATA_MODEL.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F06-AC-08",
+      "gate_ids": [
+        "G-MIGRATION"
+      ],
+      "tests": [
+        "backend/tests/test_migration.py::test_customer_cannot_review_and_cross_tenant_workbench_is_concealed",
+        "backend/tests/test_migration.py::test_expired_reviewer_is_denied",
+        "backend/tests/test_migration.py::test_review_is_versioned_idempotent_and_does_not_grant"
+      ],
+      "documents": [
+        "docs/MIGRATION.md",
+        "docs/DIAGNOSIS.md",
+        "docs/DATA_MODEL.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F07-AC-01",
+      "gate_ids": [
+        "G-BROWSER"
+      ],
+      "tests": [
+        "browser:staff account switching clears scoped resources and keeps role separate from grants"
+      ],
+      "documents": [
+        "docs/UX.md",
+        "docs/API.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F07-AC-02",
+      "gate_ids": [
+        "G-BROWSER"
+      ],
+      "tests": [
+        "browser:explicit panel fault injection leaves independent panels usable and supports recovery"
+      ],
+      "documents": [
+        "docs/UX.md",
+        "docs/API.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F07-AC-03",
+      "gate_ids": [
+        "G-BROWSER"
+      ],
+      "tests": [
+        "browser:real competing grant command produces 412, preserves intent, and requires another review"
+      ],
+      "documents": [
+        "docs/UX.md",
+        "docs/API.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F07-AC-04",
+      "gate_ids": [
+        "G-BROWSER"
+      ],
+      "tests": [
+        "browser:localized search, narrow layouts, keyboard navigation, and last manager protection"
+      ],
+      "documents": [
+        "docs/UX.md",
+        "docs/API.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F07-AC-05",
+      "gate_ids": [
+        "G-BROWSER"
+      ],
+      "tests": [
+        "browser:delivery and expiry remain distinct while competing migration evidence requires explicit review"
+      ],
+      "documents": [
+        "docs/UX.md",
+        "docs/API.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F07-AC-06",
+      "gate_ids": [
+        "G-BROWSER"
+      ],
+      "tests": [
+        "browser:delivery and expiry remain distinct while competing migration evidence requires explicit review"
+      ],
+      "documents": [
+        "docs/UX.md",
+        "docs/API.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F08-AC-01",
+      "gate_ids": [
+        "G-DOMAIN"
+      ],
+      "tests": [
+        "scripts/tests/test_specs.py::test_validator_rejects_invalid_graph_and_proof"
+      ],
+      "documents": [
+        "docs/DELIVERY_PLAN.md",
+        "docs/QUALITY.md",
+        "docs/RISK_REGISTER.md",
+        "docs/OPERATIONS.md",
+        "docs/PRODUCT_ALIGNMENT.pt-BR.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F08-AC-02",
+      "gate_ids": [
+        "G-DOMAIN"
+      ],
+      "tests": [
+        "scripts/tests/test_release_tools.py::test_runner_rejects_missing_executable",
+        "scripts/tests/test_release_tools.py::test_runner_preserves_real_nonzero_command_exit",
+        "scripts/tests/test_release_tools.py::test_runner_rejects_skipped_or_error_junit",
+        "scripts/tests/test_release_tools.py::test_runner_rejects_skipped_frontend_and_browser_results"
+      ],
+      "documents": [
+        "docs/DELIVERY_PLAN.md",
+        "docs/QUALITY.md",
+        "docs/RISK_REGISTER.md",
+        "docs/OPERATIONS.md",
+        "docs/PRODUCT_ALIGNMENT.pt-BR.md",
+        "scripts/record_evidence.py"
+      ],
+      "note": "Executable negative fixtures invoke real tiny commands in isolated temporary repositories; failed or skipped gates cannot certify a release."
+    },
+    {
+      "id": "F08-AC-03",
+      "gate_ids": [
+        "G-RELEASE"
+      ],
+      "tests": [],
+      "documents": [
+        "docs/DELIVERY_PLAN.md",
+        "docs/QUALITY.md",
+        "docs/RISK_REGISTER.md",
+        "docs/OPERATIONS.md",
+        "docs/PRODUCT_ALIGNMENT.pt-BR.md",
+        "docs/LOCAL_PRODUCT.md",
+        "docs/REVIEW_GUIDE.pt-BR.md"
+      ],
+      "note": "Documentary: closed local scope, task evidence and review guide enumerate implemented journeys and defer live integrations and rollout."
+    },
+    {
+      "id": "F08-AC-04",
+      "gate_ids": [
+        "G-OPERATIONS"
+      ],
+      "tests": [
+        "backend/tests/test_alerts.py::test_access_divergence_alert_stops_affected_writes_only"
+      ],
+      "documents": [
+        "docs/DELIVERY_PLAN.md",
+        "docs/QUALITY.md",
+        "docs/RISK_REGISTER.md",
+        "docs/OPERATIONS.md",
+        "docs/PRODUCT_ALIGNMENT.pt-BR.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F08-AC-05",
+      "gate_ids": [
+        "G-OPERATIONS"
+      ],
+      "tests": [
+        "backend/tests/test_operations.py::test_restore_replays_revocation_before_any_tenant_reopens"
+      ],
+      "documents": [
+        "docs/DELIVERY_PLAN.md",
+        "docs/QUALITY.md",
+        "docs/RISK_REGISTER.md",
+        "docs/OPERATIONS.md",
+        "docs/PRODUCT_ALIGNMENT.pt-BR.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F08-AC-06",
+      "gate_ids": [
+        "G-PERFORMANCE"
+      ],
+      "tests": [
+        "backend/tests/test_performance.py::test_real_http_local_capacity_and_fail_closed_pressure"
+      ],
+      "documents": [
+        "docs/DELIVERY_PLAN.md",
+        "docs/QUALITY.md",
+        "docs/RISK_REGISTER.md",
+        "docs/OPERATIONS.md",
+        "docs/PRODUCT_ALIGNMENT.pt-BR.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F08-AC-07",
+      "gate_ids": [
+        "G-SECURITY"
+      ],
+      "tests": [
+        "backend/tests/test_identity.py::test_production_rejects_fixture_configuration"
+      ],
+      "documents": [
+        "docs/DELIVERY_PLAN.md",
+        "docs/QUALITY.md",
+        "docs/RISK_REGISTER.md",
+        "docs/OPERATIONS.md",
+        "docs/PRODUCT_ALIGNMENT.pt-BR.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F08-AC-08",
+      "gate_ids": [
+        "G-DOMAIN"
+      ],
+      "tests": [
+        "scripts/tests/test_release_tools.py::test_runner_requires_committed_clean_revision",
+        "scripts/tests/test_release_tools.py::test_packager_rejects_stale_nested_proof",
+        "scripts/tests/test_release_tools.py::test_archive_hashes_detect_modified_contents"
+      ],
+      "documents": [
+        "docs/DELIVERY_PLAN.md",
+        "docs/QUALITY.md",
+        "docs/RISK_REGISTER.md",
+        "docs/OPERATIONS.md",
+        "docs/PRODUCT_ALIGNMENT.pt-BR.md",
+        "scripts/check_evidence.py",
+        "scripts/check_validator_behaviour.py"
+      ],
+      "note": "Executable negative fixtures reject uncommitted revisions, stale nested proof and changed archive contents."
+    },
+    {
+      "id": "F08-AC-09",
+      "gate_ids": [
+        "G-OPERATIONS"
+      ],
+      "tests": [
+        "backend/tests/test_alerts.py::test_delivery_delay_is_actionable_without_metric_identifiers",
+        "backend/tests/test_alerts.py::test_access_divergence_alert_stops_affected_writes_only"
+      ],
+      "documents": [
+        "docs/DELIVERY_PLAN.md",
+        "docs/QUALITY.md",
+        "docs/RISK_REGISTER.md",
+        "docs/OPERATIONS.md",
+        "docs/PRODUCT_ALIGNMENT.pt-BR.md"
+      ],
+      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+    },
+    {
+      "id": "F08-AC-10",
+      "gate_ids": [
+        "G-RELEASE"
+      ],
+      "tests": [],
+      "documents": [
+        "docs/DELIVERY_PLAN.md",
+        "docs/QUALITY.md",
+        "docs/RISK_REGISTER.md",
+        "docs/OPERATIONS.md",
+        "docs/PRODUCT_ALIGNMENT.pt-BR.md",
+        "docs/ENGINEERING_STANDARDS.md",
+        "specs/standards.json"
+      ],
+      "note": "Documentary: the standards registry assigns every concept a rationale, owner, verification and revisit condition; proposed production techniques remain deferred."
+    }
+  ]
+}

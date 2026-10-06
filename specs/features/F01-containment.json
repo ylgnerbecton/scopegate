@@ -1,0 +1,72 @@
+{
+  "id": "F01",
+  "title": "Contain failures and establish a baseline",
+  "status": "specified",
+  "requirements": [
+    "REQ-01",
+    "REQ-02"
+  ],
+  "documents": [
+    "docs/DIAGNOSIS.md",
+    "docs/PRODUCT.md"
+  ],
+  "depends_on": [],
+  "scope": [
+    "Map all reads and writers, including undocumented routes and report references.",
+    "Apply bounded containment fixes to the legacy compatibility adapter without assigning new access.",
+    "Capture business incident and onboarding baseline with source and observation window."
+  ],
+  "excluded": [
+    "Whole-product rewrite",
+    "Automatic resolution of ambiguous existing access",
+    "Resource computation"
+  ],
+  "invariants": [
+    "Separate static evidence, reported symptom, and hypothesis.",
+    "An absent organization is 404, not an unchecked list index.",
+    "A null embedded legacy list is an explicit empty/reviewable state.",
+    "No unscoped writer may run during a target tenant pilot."
+  ],
+  "acceptance": [
+    {
+      "id": "F01-AC-01",
+      "given": "A legacy organization has a null embedded resource list",
+      "when": "the organization read executes",
+      "then": "the organization metadata renders with a clear empty or review state; no uncontrolled exception",
+      "evidence": "legacy_null_and_absent_organization integration tests",
+      "first_evidence_task": "T00"
+    },
+    {
+      "id": "F01-AC-02",
+      "given": "A legacy create request conflicts with an existing approval entry",
+      "when": "the request is rejected before insertion",
+      "then": "no organization or user mutation occurs; record the actual conflict without claiming corruption",
+      "evidence": "transaction snapshot comparison and diagnosis review",
+      "first_evidence_task": "T00"
+    },
+    {
+      "id": "F01-AC-03",
+      "given": "Search has a known literal term and language",
+      "when": "the compatibility search executes",
+      "then": "the term participates in the parameterized filter and unrelated rows are excluded",
+      "evidence": "search regression including wildcard input",
+      "first_evidence_task": "T00"
+    },
+    {
+      "id": "F01-AC-04",
+      "given": "A scoped legacy access change fails after the first write",
+      "when": "the operation rolls back",
+      "then": "neither partial access deletion nor unrelated organization change persists",
+      "evidence": "database fault injection and write inventory",
+      "first_evidence_task": "T00"
+    },
+    {
+      "id": "F01-AC-05",
+      "given": "Runtime authorization paths are absent from the inspected slice",
+      "when": "baseline discovery begins",
+      "then": "the missing consumer and identity owners are recorded; no production effective-access parity claim is made",
+      "evidence": "reviewed evidence register and question ownership",
+      "first_evidence_task": "T00"
+    }
+  ]
+}

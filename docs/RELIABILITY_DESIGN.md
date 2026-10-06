@@ -1,0 +1,129 @@
+# Scopegate reliability design
+
+Scopegate contains dependency failures without weakening organization isolation or reviving revoked access. Protected use remains a current primary database decision; delivery runs after the access transaction; recovery preserves later authorization intent. The controls below are mandatory implementation requirements. Numeric values are proposed local and pilot settings, with no measured production capacity or contractual availability promise implied.
+
+[resilience.json](../specs/contracts/resilience.json) and [slo.json](../specs/contracts/slo.json) own the proposed values, units, limits, and evidence gates. [Security](SECURITY.md), [Architecture](ARCHITECTURE.md), and [Migration](MIGRATION.md) own policy, lock ordering, and authority. Changing a reliability control cannot change those rules implicitly.
+
+## Requests and bounded work
+
+Every request starts with one monotonic deadline. A dependency call receives only the remaining budget minus the response reserve; nested timeouts cannot restart the deadline. The database wall clock remains authoritative for expiry after lock acquisition. Monotonic time is for elapsed work, not invitation or membership validity. Cancellation closes or rolls back the unit of work and returns its connection; a disconnected client does not justify an unbounded server transaction.
+
+| Budget | Proposed value | Scope and consequence |
+| --- | --- | --- |
+| Ordinary HTTP deadline | 2,000 ms | Tenant reads and bounded access commands; includes admission, pool wait, transaction, commit, and serialization. |
+| Identity callback deadline | 5,000 ms | Server callback and provider exchanges; excludes human time on the provider's page. |
+| HTTP response reserve | 150 ms | Preserved for rollback or commit outcome handling and a safe response. |
+| Admission wait | 50 ms | A saturated execution bulkhead returns a retryable unavailable response. |
+| Pool checkout wait | 100 ms | Pool saturation fails quickly; no unlimited connection overflow. |
+| Database lock timeout | 250 ms | Bounds waiting for resource, organization, and row locks. |
+| Database statement timeout | 750 ms | Bounded ordinary SQL execution; remaining deadline may shorten it. |
+| Database transaction deadline | 1,200 ms | Service enforces the total transaction bound across several statements. |
+| Database connect timeout | 1,000 ms | Reconnect attempts share the request deadline. |
+| Provider connect and read | 500 ms and 1,500 ms | OIDC exchange, discovery, or key refresh; total exchange at most 2,000 ms. |
+| Delivery connect and read | 500 ms and 3,000 ms | Outbox delivery outside a database transaction; whole attempt at most 4,000 ms. |
+| Backfill transaction | 2,000 ms | Bounded chunk; maintenance has a separate queue and database allocation. |
+
+These are caps, not a promise that every cap can be consumed in one request. Pool wait of 100 ms plus one transaction of 1,200 ms plus a 150 ms reserve leaves 550 ms for admission, validation, and serialization. If the remaining budget cannot accommodate a safe operation, reject before starting it. Do not hold database locks while waiting for OIDC or delivery. A completed authentication exchange precedes a new locked use case, which rechecks session claims and freshness after waits.
+
+Use transaction-local `lock_timeout` and `statement_timeout`. A statement timeout does not by itself bound a transaction containing several statements, so the service also checks its transaction deadline and cancels overdue work. Keep the timeout hierarchy explicit. PostgreSQL defines the two settings separately; the proposed values above are Scopegate choices. [PostgreSQL client timeouts](https://www.postgresql.org/docs/18/runtime-config-client.html).
+
+Long reports and migration exports create a bounded durable work record, then process bounded pages. They reauthorize before each durable protected output and before retrieval. They do not extend a shared organization lock over external computation. A request cannot report successful work creation until the work and its access evidence commit together.
+
+## Admission and dependency isolation
+
+The proposed pilot has two HTTP replicas with two workers each. Each worker allows 16 active requests and at most eight waiting admissions, with a 50 ms queue wait. An OIDC bulkhead permits two concurrent external calls per HTTP worker. Two outbox workers permit one concurrent provider delivery each. The capacity plan separately bounds database pools; execution concurrency is not permission to open one database connection per request.
+
+Reserve privileged recovery and inspection capacity through separate credentials and a small maintenance pool. Background work cannot consume the HTTP connection allocation. Apply fair per-principal and per-organization request quotas at an authenticated boundary and retain a global saturation limit. Reject before allocating large payloads or opening a transaction. Quota changes need product review; infrastructure overload responses count as failed service requests.
+
+OIDC and delivery breakers are dependency-specific. The proposed breaker needs at least 20 completed dependency calls within 30 seconds, opens at a failure ratio of at least 50%, and admits one half-open probe after 30 seconds for OIDC or 60 seconds for delivery. Successful probes close it; failed probes reopen it. Do not share one breaker between identity, delivery, and the database. A breaker suppresses failing calls; it never substitutes an allow decision, unverified identity, or success receipt.
+
+Database saturation uses bounded pools, admission, and readiness rather than a cached permission fallback. An unavailable authoritative database makes protected reads and mutations unavailable. Cached static assets may continue loading, but no protected result or access change is inferred from them.
+
+## Retry ownership and uncertain commits
+
+One layer owns retries for a logical operation. HTTP application services own database transaction retries; external HTTP adapters own only their explicitly retryable transport exchanges; the outbox worker owns delivery retries. HTTP proxy, browser, SDK, and worker retry policies must be inspected together so their attempt counts do not multiply.
+
+| Operation | Proposed attempt policy | Forbidden retry |
+| --- | --- | --- |
+| Read-only database request | At most two total attempts within the original deadline. | Retrying a policy denial or expired session. |
+| Access mutation with known rollback | At most two total attempts for a deadlock or serialization failure, using the same key and fingerprint. | Reapplying a stale version as though it were current. |
+| Mutation with uncertain commit | Query the matching receipt, then resume with the same actor, scope, operation, target, body, and expected version. | Generating a new key or assuming connection loss means rollback. |
+| OIDC token exchange | One total attempt unless the provider contract supplies safe retry or exchange reconciliation. | Blindly replaying a consumed authorization code. |
+| OIDC discovery and key refresh | At most two total attempts, single-flight per allowlisted issuer, within the dependency deadline. | Following browser-controlled URLs or accepting an unknown key. |
+| Outbox delivery | At most eight claimed attempts per reviewed replay generation, within a 30-minute generation horizon and before invitation expiry. | Retrying an expired, superseded, revoked, or permanently invalid payload. |
+
+Transaction retry uses full jitter from zero to `min(100 ms, 25 ms × 2^retry_index)`. Delivery uses full jitter from zero to `min(900 s, 5 s × 2^retry_index)`, observes an allowed provider `Retry-After` only within the remaining horizon, and never sleeps with a database connection held. Count the first call as attempt one. Attempts, horizon, and the request deadline all apply; the first exhausted limit wins.
+
+Receipts bind actor, organization, operation, route target, canonical request fingerprint, and expected version. Retain successful receipts for at least 24 hours as specified in [API](API.md). Check current authentication and applicable authority before returning a receipt. Invitation acceptance additionally repeats current verified recipient binding and recent authentication checks before a matching receipt is used. A new key cannot replay a consumed invitation.
+
+Do not persist raw request payloads merely to calculate a fingerprint. Canonicalize allowlisted fields, compute the request digest, retain the minimal response, and exclude invitation secrets, provider tokens, cookies, or raw contact content. A receipt expiry is not permission to repeat uncertain old intent: an older unresolved command goes through status reconciliation with an operator or a fresh explicit business action. Delivery deduplication uses its own stable delivery key and the provider's proven retention period.
+
+## Outbox leases and delivery state
+
+Creation of invitation, intended resource references, audit event, and encrypted delivery item commits together. Delivery begins afterward. Database acknowledgment means durable intent; provider acknowledgment means the provider accepted delivery; neither means the recipient read the message or accepted access.
+
+The schema contract's `pending`, `delivered`, and `failed` states are retained. A pending row with a current lease is a derived leased state, not a new application status. `failed` is the terminal dead-letter state until an authorized review decides whether to requeue the same still-valid intent. The canonical DDL now represents lease owner, claim token, lease expiry, cumulative and generation attempts, replay generation, attempt timestamps, bounded safe error code, retry deadline, encryption key version, and payload purge markers. T06 must implement their claim, compare-and-set, expiry, encryption, and replay semantics; columns alone do not provide a working sender.
+
+Claim at most ten due rows in a short transaction, ordered by availability time and immutable identifier. Use `FOR UPDATE SKIP LOCKED`, then conditionally set a 30-second lease and increment the attempt count. Claim only a pending item below its generation cap, within its retry horizon, with an eligible pending unexpired invitation and no current lease. A worker claims only what its delivery bulkhead can start before the lease expires; the batch size is a ceiling, not permission to lease ten rows behind one slow call. Commit the claim before network I/O, then recheck validity and sufficient remaining attempt time before calling the provider. PostgreSQL documents `SKIP LOCKED` as appropriate for queue-like consumers and unsuitable as a consistent general-purpose read. [PostgreSQL queue locking](https://www.postgresql.org/docs/18/sql-select.html).
+
+Outcome updates compare the row's current claim token and unexpired lease. A stale worker cannot mark a row delivered, clear another worker's lease, or overwrite its retry schedule. Database time determines lease expiry. A crashed worker's lease becomes reclaimable; count its claim as an attempt even when the provider outcome is unknown. An external call may still complete after the lease expires, so lease fencing alone cannot promise exactly-once delivery.
+
+Use the stable delivery key at the provider when it offers verified deduplication. A crash after provider acceptance but before the delivered update can resend the same message. Where the provider cannot deduplicate, duplicates are an accepted at-least-once consequence; token acceptance remains single-use and atomic. On an ambiguous timeout, check provider status by delivery key when supported before retrying. Never convert an unknown outcome into a fabricated success.
+
+Transient timeouts, rate limits, and temporary provider failures reschedule pending work. A bounded finalizer marks unleased or expired-lease pending work failed when its generation cap, retry horizon, or invitation validity is exhausted; it cannot leave permanently unclaimable work pending. It does not steal a current worker lease. Unreadable ciphertext, invalid recipient policy, or a permanent provider rejection goes directly to `failed` with a safe reason. The dead-letter queue is a filtered operational view, not another broker. An operator reviews the failure, current invitation validity, key accessibility, and previous delivery evidence. Requeue requires existing readable ciphertext and a pending unexpired invitation, keeps the same intent and delivery key, increments `replay_generation`, resets `generation_attempts` to zero, preserves cumulative `attempts`, and sets the deadline to the earlier of now plus 30 minutes and invitation expiry. It clears terminal and lease metadata atomically. Issuing a new invitation is a separate authorized resend action that revokes the old token and creates a new message.
+
+Purge encrypted delivery payload within one hour of successful delivery or invitation expiry, retaining safe state, key version, outcome, and audit references. Expired pending work first becomes terminal failed with safe expiry evidence; terminal rows may then clear ciphertext and set `payload_purged_at` together. A delivered or expired ciphertext must not remain indefinitely because a sweeper failed; alert on overdue purge. Encryption keys are versioned in an external secret store, rotated with a tested compatibility window, and never included in the same database dump. The retention values are proposals requiring identity and data owner approval. The DDL permits ciphertext removal only with a purge marker on terminal work; a purged row cannot be requeued.
+
+## Dependency failure decisions
+
+| Failure | Customer behavior | State and operational action |
+| --- | --- | --- |
+| Authoritative database unavailable | Protected requests return bounded unavailable responses; no cached allow. | Roll back known incomplete work, reconcile uncertain receipts, page platform owner. |
+| Database pool exhausted | Reject bounded admissions; preserve recovery reserve. | Observe checkout waits and active transactions; do not increase pools blindly. |
+| Identity provider unavailable | New authentication and required reauthentication fail; existing valid local sessions continue only under current primary session and access checks. | Page identity owner; do not extend session or claim freshness. |
+| Discovery or key refresh unavailable | Validate only a previously verified, allowlisted known key within the approved freshness bound; otherwise deny authentication. | Single-flight bounded refresh, breaker, issuer-scoped evidence. |
+| Unknown key identifier | No authentication until an allowlisted issuer refresh succeeds and key validation passes. | Do not search other issuers or use an arbitrary URL. |
+| Provider key or identity revocation received | Evict affected key or session immediately and deny it. | Document provider event propagation; no unproven guarantee of immediate remote revocation. |
+| Delivery provider unavailable | Invitation creation may commit with pending delivery; access is unchanged. | Bounded retry, outbox age alert, eventual dead-letter review. |
+| Missing translation or asset | Show documented locale fallback or a recoverable metadata panel. | Catalog owner repairs content; grant state remains unchanged. |
+| Telemetry collector unavailable | Bounded local telemetry buffering; business and audit transactions still enforce policy. | Drop excess diagnostic data with a loss counter; do not drop transactional audit silently. |
+| Source system or migration evidence unavailable | Pause the affected backfill, comparison, or cutover. | Target organizations with already approved current access continue serving under target authority. |
+| Unknown post-restore revocation state | Fence affected consumption and mutation until reconciled. | Never reopen based only on an old snapshot's allow rows. |
+
+Known-key caching is signature-validation support, not an authorization cache. Proposed maximum JWKS freshness is five minutes, shortened by the issuer's cache and revocation policy; there is no stale grace beyond that bound. Signature, issuer, audience, nonce, time, and required claims still validate. Existing local sessions remain bounded by eight hours lifetime and 30 minutes idle, with monotonic primary `last_seen_at` updates; provider outages extend neither bound. Preview and acceptance still require provider authentication within 15 minutes. Provider discovery, key rollover, remote revocation propagation, and claim semantics must be tested against the actual issuer. [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html).
+
+## Service objectives and alert decisions
+
+An SLI measures observed user behavior, an SLO sets its internal target, and an SLA is a separately negotiated commercial commitment. Scopegate proposes a 99.9% eligible-request availability SLO over a rolling 30-day window. No contractual SLA or provider commitment is assumed.
+
+The denominator is every eligible supported request observed at the service edge, including load-shed requests, dependency failures, server errors, gateway timeouts, and user timeouts after the service accepted the attempt. The numerator is a correctly completed response within its deadline, including intended authorization denials. Exclusions are only documented unsupported or malformed client requests, deliberate quota violations, explicit synthetic probes tracked separately, and confirmed client cancellation before service admission. Maintenance and deployment failures are not excluded. A missing outcome is a failed request until edge and server evidence reconciles it. Keep excluded traffic counters visible.
+
+For target `S=0.999`, permitted failed requests are `(1-S) × eligible_requests`. Time-equivalent unavailability at uniform traffic is `30 × 24 × 60 × 0.001 = 43.2 minutes`; request-based accounting must use actual counts. Burn rate is `observed_bad_fraction / 0.001`. Proposed pages require both one-hour and five-minute windows above 14.4×, or both six-hour and 30-minute windows above 6×. A three-day and six-hour pair above 1× creates a ticket. This multiwindow approach follows the primary SRE reference; Scopegate's service scope and owners are its own decisions. [SRE burn-rate alerts](https://sre.google/workbook/alerting-on-slos/).
+
+Low pilot traffic needs synthetic journeys and an explicit low-sample state. Proposed protected allow and deny probes run every minute; two consecutive availability failures page the platform owner, and any confirmed unsafe allow pages immediately. A real identity journey runs every five minutes only after the provider owner approves the probe and credentials. Do not hide an incident behind a minimum sample threshold. Latency SLOs require at least 95% of eligible attempts within their endpoint-specific budget from [Capacity](CAPACITY_PLAN.md), with failed and timed-out attempts retained in accounting. Delivery freshness has a separate 99% within five minutes objective for eligible intents whose invitation had at least that window remaining at issuance. Shorter-window exclusions stay visible; provider failures remain bad outcomes. Functional permission correctness has zero tolerance for confirmed unsafe allows and unreviewed access changes, regardless of remaining availability budget.
+
+Pause feature rollout when the rolling error budget is exhausted; prioritize reliability repair until the target is restored and the incident owner approves resumption. A security invariant failure, lost revocation, broken audit atomicity, or unexplained migration mismatch stops the affected rollout immediately without waiting for burn-rate windows.
+
+## Telemetry and operating evidence
+
+Instrument HTTP, database use cases, provider calls, outbox claim and outcome, and migration phases through OpenTelemetry. A structured log records service version, environment, route template, operation, outcome code, duration, request and correlation IDs, trace ID, safe actor and organization references, and dependency error class. Do not log complete payloads to answer what happened; use operation, validated field names, counts, request digest, and restricted audit references instead.
+
+Metric labels are a fixed allowlist: environment, service, route template, operation, dependency, status class, bounded reason code, and authority mode. Organization, user, project, resource, email, invitation, delivery key, request ID, and trace ID are forbidden metric labels. Protected logs may carry pseudonymous scoped identifiers under retention policy; they remain unsuitable for unrestricted dashboards.
+
+Propagate W3C trace context. Baggage is allowlisted to environment and bounded operation class, stripped at external provider boundaries, and never trusted as identity or permission evidence. No contact data, tenant identifiers, secrets, or payload fields enter baggage. OpenTelemetry warns that automatically propagated baggage can reach unintended downstream services and has no built-in integrity protection. [OpenTelemetry baggage](https://opentelemetry.io/docs/concepts/signals/baggage/).
+
+Use 10% normal diagnostic trace sampling as a proposal, bounded at the collector, with retained error and slow-operation examples where sampling supports them. Proposed diagnostic retention is 14 days for logs and seven days for traces, subject to security approval. Transactional audit is unsampled and separate; its retention and the intent journal's recovery horizon require data-owner approval. Telemetry loss and cardinality rejection are observable. Dashboards show request SLO and burn, endpoint latency, admission and pool waits, active connections, lock waits, stale-version conflicts, outbox age and dead letters, purge backlog, identity failures, and migration mismatches.
+
+| Playbook | Owner | First safe action | Required recovery evidence |
+| --- | --- | --- | --- |
+| Availability burn | Platform on-call | Stop expansion, identify route and dependency, protect pool reserve. | Stable good-request ratio and latency over the alert short window plus incident review. |
+| Authorization defect | Security and engineering lead | Fence affected operation and organization; preserve current grants and audit. | Negative scope tests, current manifest comparison, and revocation-preserving repair. |
+| Outbox delay or dead letters | Delivery adapter owner | Inspect safe reason and oldest due age; constrain retries. | Verified provider outcome or reviewed replay; no duplicate acceptance or stale token activation. |
+| Identity failure | Identity owner | Inspect allowlisted issuer, claims and known-key freshness; reject unsafe fallback. | Positive and negative provider flow, freshness, revocation and callback verification. |
+| Restore uncertainty | Platform and security owners | Keep affected access fenced. | Durable intent journal reconciliation, audit continuity, and no revived revocation. |
+
+## Recovery and validation gates
+
+Database durability at a recovery point does not prove preservation of a later revocation. Before proposing RPO at most five minutes and RTO at most 60 minutes, establish externally durable access intent and outcome evidence, archive or synchronize it through the selected host adapter, and test replay against the restored database. A journal in the same lost database is insufficient. Unknown command outcomes default to fenced review, not a broadened grant. Journal transport, retention, ordering, encryption, and the acknowledgment semantics remain live infrastructure inputs.
+
+Mandatory evidence includes database timeout cancellation, bounded overload, breaker recovery, known and unknown key failure, duplicate provider delivery, crash after provider acceptance, stale lease outcome rejection, poison payload isolation, expired payload purge, telemetry loss, and restore after a committed revocation. The planned `G-OPERATIONS` entrypoint is `make test-operations`, covering resilience, observability, and recovery suites; `G-SECURITY` uses `make test-security` for their trust-boundary checks. They become real failing gates when the foundation is implemented. [Delivery system](DELIVERY_SYSTEM.md) maps their owners and CI conditions. This specification and a passing schema check cannot substitute for those runtime results.

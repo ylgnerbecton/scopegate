@@ -1,0 +1,463 @@
+{
+  "schema_version": 1,
+  "scope": "Written deliverables and additional engineering depth; runtime evidence is separate.",
+  "source_handling": "The private input stays outside the repository. Public descriptions use product vocabulary.",
+  "clauses": [
+    {
+      "id": "A01",
+      "outcome": "Separate causes from symptoms",
+      "documents": [
+        "docs/DIAGNOSIS.md"
+      ],
+      "requirements": [
+        "REQ-01"
+      ],
+      "features": [
+        "F01"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "A02",
+      "outcome": "State hypotheses and confirming signals",
+      "documents": [
+        "docs/DIAGNOSIS.md"
+      ],
+      "requirements": [
+        "REQ-01"
+      ],
+      "features": [
+        "F01"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "A03",
+      "outcome": "Record questions with decision owners",
+      "documents": [
+        "docs/DIAGNOSIS.md"
+      ],
+      "requirements": [
+        "REQ-01"
+      ],
+      "features": [
+        "F01"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "B01",
+      "outcome": "Define objective and expected business result",
+      "documents": [
+        "docs/PRODUCT.md"
+      ],
+      "requirements": [
+        "REQ-02"
+      ],
+      "features": [
+        "F01"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "B02",
+      "outcome": "Define success metrics and baseline collection",
+      "documents": [
+        "docs/PRODUCT.md"
+      ],
+      "requirements": [
+        "REQ-02",
+        "REQ-20"
+      ],
+      "features": [
+        "F01",
+        "F08"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "B03",
+      "outcome": "Define included and excluded scope",
+      "documents": [
+        "docs/PRODUCT.md"
+      ],
+      "requirements": [
+        "REQ-02"
+      ],
+      "features": [
+        "F01"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "B04",
+      "outcome": "Select the smallest slice that validates the hypothesis",
+      "documents": [
+        "docs/PRODUCT.md"
+      ],
+      "requirements": [
+        "REQ-02"
+      ],
+      "features": [
+        "F01"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "B05",
+      "outcome": "Defend containment versus redesign and delaying construction",
+      "documents": [
+        "docs/PRODUCT.md"
+      ],
+      "requirements": [
+        "REQ-02"
+      ],
+      "features": [
+        "F01"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "C01",
+      "outcome": "Explain target entities, keys, relations and ownership",
+      "documents": [
+        "docs/DATA_MODEL.md"
+      ],
+      "requirements": [
+        "REQ-03",
+        "REQ-04",
+        "REQ-09"
+      ],
+      "features": [
+        "F02",
+        "F05"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "C02",
+      "outcome": "Explain model tradeoffs",
+      "documents": [
+        "docs/DECISION_MATRIX.md"
+      ],
+      "requirements": [
+        "REQ-03",
+        "REQ-05"
+      ],
+      "features": [
+        "F02",
+        "F03"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "C03",
+      "outcome": "Model individual granular access within organization entitlement",
+      "documents": [
+        "docs/DOMAIN_DESIGN.md"
+      ],
+      "requirements": [
+        "REQ-05"
+      ],
+      "features": [
+        "F03"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "C04",
+      "outcome": "Model internal users across accounts with bounded access",
+      "documents": [
+        "docs/SECURITY.md"
+      ],
+      "requirements": [
+        "REQ-04",
+        "REQ-06"
+      ],
+      "features": [
+        "F03"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "C05",
+      "outcome": "Replace approval lists with a complete finite journey",
+      "documents": [
+        "docs/API.md"
+      ],
+      "requirements": [
+        "REQ-07"
+      ],
+      "features": [
+        "F04"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "C06",
+      "outcome": "Define catalog publisher and access administration boundary",
+      "documents": [
+        "docs/ARCHITECTURE.md"
+      ],
+      "requirements": [
+        "REQ-08",
+        "REQ-09"
+      ],
+      "features": [
+        "F05"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "C07",
+      "outcome": "Evaluate alternatives and explain rejected options",
+      "documents": [
+        "docs/DECISION_MATRIX.md"
+      ],
+      "requirements": [
+        "REQ-03",
+        "REQ-19"
+      ],
+      "features": [
+        "F02",
+        "F08"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "D01",
+      "outcome": "Break delivery into phases and developer-ready acceptance",
+      "documents": [
+        "docs/DELIVERY_PLAN.md"
+      ],
+      "requirements": [
+        "REQ-15",
+        "REQ-19"
+      ],
+      "features": [
+        "F08"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "D02",
+      "outcome": "Define safe migration of existing data and hidden references",
+      "documents": [
+        "docs/MIGRATION.md"
+      ],
+      "requirements": [
+        "REQ-12",
+        "REQ-13",
+        "REQ-14"
+      ],
+      "features": [
+        "F06"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "D03",
+      "outcome": "Map risks, user impact, mitigation and stop triggers",
+      "documents": [
+        "docs/RISK_REGISTER.md"
+      ],
+      "requirements": [
+        "REQ-15",
+        "REQ-20"
+      ],
+      "features": [
+        "F08"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "D04",
+      "outcome": "Explain parallel and sequential dependencies",
+      "documents": [
+        "docs/DELIVERY_PLAN.md"
+      ],
+      "requirements": [
+        "REQ-15",
+        "REQ-19"
+      ],
+      "features": [
+        "F08"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "E01",
+      "outcome": "Provide a business-ready alignment message",
+      "documents": [
+        "docs/PRODUCT_ALIGNMENT.pt-BR.md"
+      ],
+      "requirements": [
+        "REQ-16"
+      ],
+      "features": [
+        "F08"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "E02",
+      "outcome": "Explain what comes first and the requested tradeoff",
+      "documents": [
+        "docs/PRODUCT_ALIGNMENT.pt-BR.md"
+      ],
+      "requirements": [
+        "REQ-16"
+      ],
+      "features": [
+        "F08"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "E03",
+      "outcome": "State two or three independent decisions and escalations",
+      "documents": [
+        "docs/PRODUCT_ALIGNMENT.pt-BR.md"
+      ],
+      "requirements": [
+        "REQ-16"
+      ],
+      "features": [
+        "F08"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "E04",
+      "outcome": "Provide a message ready to paste into a collaboration channel",
+      "documents": [
+        "docs/PRODUCT_ALIGNMENT.pt-BR.md"
+      ],
+      "requirements": [
+        "REQ-16"
+      ],
+      "features": [
+        "F08"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "M01",
+      "outcome": "Replace recurring patches with predictable delivery",
+      "documents": [
+        "docs/PROPOSTA.pt-BR.md"
+      ],
+      "requirements": [
+        "REQ-01",
+        "REQ-02",
+        "REQ-15"
+      ],
+      "features": [
+        "F01",
+        "F08"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "M02",
+      "outcome": "Explain business value, sequence and delivery estimate",
+      "documents": [
+        "docs/DELIVERY_PLAN.md"
+      ],
+      "requirements": [
+        "REQ-02",
+        "REQ-15",
+        "REQ-16"
+      ],
+      "features": [
+        "F01",
+        "F08"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "M03",
+      "outcome": "Preserve intended existing access through safe migration",
+      "documents": [
+        "docs/MIGRATION.md"
+      ],
+      "requirements": [
+        "REQ-12",
+        "REQ-13",
+        "REQ-14"
+      ],
+      "features": [
+        "F06"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    },
+    {
+      "id": "M04",
+      "outcome": "Continue delivering through a valuable minimum slice",
+      "documents": [
+        "docs/PRODUCT.md"
+      ],
+      "requirements": [
+        "REQ-02"
+      ],
+      "features": [
+        "F01"
+      ],
+      "design_status": "documented",
+      "runtime_status": "pending",
+      "review_method": "Read the referenced decision and linked acceptance scenarios; verify executed evidence separately."
+    }
+  ]
+}

@@ -1,0 +1,134 @@
+{
+  "id": "F03",
+  "title": "Scoped grants and reliable revocation",
+  "status": "specified",
+  "requirements": [
+    "REQ-05",
+    "REQ-06",
+    "REQ-11",
+    "REQ-18"
+  ],
+  "documents": [
+    "docs/DATA_MODEL.md",
+    "docs/SECURITY.md",
+    "docs/API.md"
+  ],
+  "depends_on": [
+    "F02"
+  ],
+  "scope": [
+    "Implement central policy shared by lists, detail, report use, and commands.",
+    "Apply bounded grant diffs with membership access_version and idempotency receipts.",
+    "Use transaction locks and append-only audit privileges; expire staff membership at decision time."
+  ],
+  "excluded": [
+    "Role-implied resource use",
+    "Global staff bypass",
+    "Separate policy engine",
+    "Authorization cache in the first release"
+  ],
+  "invariants": [
+    "Resource use requires active membership, project, entitlement, resource, and explicit grant.",
+    "Resource row locks precede organization locks and membership locks.",
+    "Use and revoke linearize through shared/exclusive organization transaction locks.",
+    "Every target organization has at least one active non-expiring customer access manager; staff never satisfy continuity."
+  ],
+  "acceptance": [
+    {
+      "id": "F03-AC-01",
+      "given": "A manager has no grant for an entitled resource",
+      "when": "the manager lists consumer resources or creates a report",
+      "then": "that resource is excluded and use is denied despite the management role",
+      "evidence": "manager_without_grant endpoint tests",
+      "first_evidence_task": "T07"
+    },
+    {
+      "id": "F03-AC-02",
+      "given": "A staff member has grants in A and B",
+      "when": "a grant in A is removed",
+      "then": "B remains accessible only through B membership; A is denied",
+      "evidence": "multi_account_staff scoped diff tests",
+      "first_evidence_task": "T05"
+    },
+    {
+      "id": "F03-AC-03",
+      "given": "Staff expiry passes while waiting for a lock",
+      "when": "a decision executes after acquiring locks",
+      "then": "the decision is denied using the clock after waiting",
+      "evidence": "controlled_clock_and_lock expiry test",
+      "first_evidence_task": "T05"
+    },
+    {
+      "id": "F03-AC-04",
+      "given": "A client submits the same key and fingerprint twice",
+      "when": "the grant command commits and is retried",
+      "then": "the stored result is returned and one grant transition/audit exists",
+      "evidence": "idempotency replay and audit count tests",
+      "first_evidence_task": "T05"
+    },
+    {
+      "id": "F03-AC-05",
+      "given": "Another editor commits a membership version first",
+      "when": "a new command uses the stale If-Match value",
+      "then": "412 with no partial mutation",
+      "evidence": "concurrent_stale_edit integration test",
+      "first_evidence_task": "T05"
+    },
+    {
+      "id": "F03-AC-06",
+      "given": "Audit insertion fails during a grant mutation",
+      "when": "the transaction ends",
+      "then": "the grants, membership version, receipt, and audit all roll back",
+      "evidence": "atomic_audit fault injection",
+      "first_evidence_task": "T05"
+    },
+    {
+      "id": "F03-AC-07",
+      "given": "Report creation overlaps revocation",
+      "when": "the shared/exclusive lock ordering resolves",
+      "then": "a pre-revoke use may complete; every decision after revoke commit denies",
+      "evidence": "two_connection_use_revoke test with controlled barriers",
+      "first_evidence_task": "T07"
+    },
+    {
+      "id": "F03-AC-08",
+      "given": "Only one durable customer manager remains, even if expiring staff managers exist",
+      "when": "the command locks the organization and counts valid managers",
+      "then": "409 last_manager_required; concurrent suspension cannot remove both durable managers",
+      "evidence": "last_manager concurrency test",
+      "first_evidence_task": "T05"
+    },
+    {
+      "id": "F03-AC-09",
+      "given": "A user supplies a different organization ID on each data path",
+      "when": "lists, detail, audit, reports, and grants execute",
+      "then": "no metadata, counts, cursor, or records leak across organizations",
+      "evidence": "full_endpoint_tenant_matrix",
+      "first_evidence_task": "T10"
+    },
+    {
+      "id": "F03-AC-10",
+      "given": "An entitlement has grants and a mixed-plan pending invitation",
+      "when": "platform disables it with a reviewed current preview",
+      "then": "all exact-pair grants and the entire invitation are revoked, each changed membership advances once and unrelated pairs remain unchanged",
+      "evidence": "atomic entitlement fanout integration test",
+      "first_evidence_task": "T04"
+    },
+    {
+      "id": "F03-AC-11",
+      "given": "An operator reviewed an impact preview",
+      "when": "a new invitation or grant commits before the command",
+      "then": "412 impact_changed with no mutations; reenable never resurrects revoked grants",
+      "evidence": "preview freshness and disable-reenable regression",
+      "first_evidence_task": "T04"
+    },
+    {
+      "id": "F03-AC-12",
+      "given": "A disable affects more than a configured fanout cap",
+      "when": "the operator submits a valid command",
+      "then": "409 entitlement_impact_too_large with no changes, audit mutation or receipt",
+      "evidence": "cap-plus-one bounded transition test",
+      "first_evidence_task": "T04"
+    }
+  ]
+}

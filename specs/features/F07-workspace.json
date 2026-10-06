@@ -1,0 +1,83 @@
+{
+  "id": "F07",
+  "title": "Accessible organization access workspace",
+  "status": "specified",
+  "requirements": [
+    "REQ-17"
+  ],
+  "documents": [
+    "docs/UX.md",
+    "docs/API.md"
+  ],
+  "depends_on": [
+    "F04",
+    "F05",
+    "F06"
+  ],
+  "scope": [
+    "Organization switcher, project resource search, member detail, grant editor, invitations, audit, and migration review views.",
+    "Generated API types, tenant/principal-aware query keys, confirmed mutations, and stable URL state.",
+    "Responsive keyboard-operable error/empty/loading/review states."
+  ],
+  "excluded": [
+    "Optimistic grant mutation",
+    "Custom design system platform",
+    "Authority enforced only by hidden UI controls"
+  ],
+  "invariants": [
+    "Switching account clears prior account protected data and pending selections.",
+    "Denied resource cannot be rendered from a previous tenant cache.",
+    "Form input survives recoverable failures; stale version requires review.",
+    "Status uses text in addition to color."
+  ],
+  "acceptance": [
+    {
+      "id": "F07-AC-01",
+      "given": "A user opens organization A and switches to B",
+      "when": "queries and in-flight responses resolve",
+      "then": "A data never renders under B; principal/org/project are present in query keys",
+      "evidence": "browser account_switch race scenario",
+      "first_evidence_task": "T09"
+    },
+    {
+      "id": "F07-AC-02",
+      "given": "The resource panel fails but organization metadata loads",
+      "when": "workspace renders",
+      "then": "recoverable panel error and unaffected valid panels remain usable",
+      "evidence": "panel_failure browser scenario",
+      "first_evidence_task": "T09"
+    },
+    {
+      "id": "F07-AC-03",
+      "given": "Another operator changes grants before submit",
+      "when": "server returns 412",
+      "then": "UI preserves the draft, fetches current state, shows the conflict, and never displays unconfirmed access",
+      "evidence": "stale_edit UI scenario",
+      "first_evidence_task": "T09"
+    },
+    {
+      "id": "F07-AC-04",
+      "given": "An operator uses only keyboard at 375, 768, and 1440 widths",
+      "when": "the invitation and grant journey runs",
+      "then": "controls have labels, visible focus, usable dialogs, and no horizontal loss of actions",
+      "evidence": "browser journey plus accessibility scan and manual keyboard evidence",
+      "first_evidence_task": "T09"
+    },
+    {
+      "id": "F07-AC-05",
+      "given": "An invitation expires or delivery fails",
+      "when": "its row renders",
+      "then": "recipient state and delivery state remain distinct with an actionable explanation",
+      "evidence": "invite_state component and browser tests",
+      "first_evidence_task": "T09"
+    },
+    {
+      "id": "F07-AC-06",
+      "given": "An unresolved migration conflict has competing evidence",
+      "when": "operator reviews it",
+      "then": "source/target difference and required owner decision are visible; UI cannot bypass cutover gate",
+      "evidence": "migration_review scenario",
+      "first_evidence_task": "T09"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "format": "scopegate-synthetic-v1",
+  "records": [
+    {
+      "source_kind": "grant",
+      "source_key": "grant-reviewed-001",
+      "organization_id": "20000000-0000-4000-8000-000000000001",
+      "issuer": "http://localhost:8901",
+      "subject": "viewer-cedar",
+      "baseline_allowed": true,
+      "project_id": "30000000-0000-4000-8000-000000000001",
+      "resource_id": "40000000-0000-4000-8000-000000000001",
+      "source_sequence": 1
+    }
+  ]
+}

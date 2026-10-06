@@ -1,0 +1,104 @@
+{
+  "id": "F06",
+  "title": "Reconcile, compare, cut over, and recover",
+  "status": "specified",
+  "requirements": [
+    "REQ-12",
+    "REQ-13",
+    "REQ-14"
+  ],
+  "documents": [
+    "docs/MIGRATION.md",
+    "docs/DIAGNOSIS.md",
+    "docs/DATA_MODEL.md"
+  ],
+  "depends_on": [
+    "F02",
+    "F03",
+    "F04",
+    "F05"
+  ],
+  "scope": [
+    "Build synthetic legacy fixture, profiler, source map, ledger, and replayable transformations.",
+    "Map verified identities and projects with reviewed evidence; retain ambiguous rows outside target access.",
+    "Fence writers, capture deltas, shadow compare, canary one organization, and rehearse compatible rollback."
+  ],
+  "excluded": [
+    "Automatic union/intersection of conflicting grants",
+    "Matching project identities by similar names",
+    "Engine upgrade during permission migration",
+    "Deleting isolated unused legacy tables"
+  ],
+  "invariants": [
+    "Every source association including report refs receives a ledger outcome.",
+    "Replay of unchanged snapshot/transform is idempotent.",
+    "Each organization has one authoritative writer mode and monotonic epoch.",
+    "Post-cutover revocations survive application rollback."
+  ],
+  "acceptance": [
+    {
+      "id": "F06-AC-01",
+      "given": "Legacy fields disagree on intended access",
+      "when": "the transformation runs",
+      "then": "review_required with source provenance; no guessed grant and no tenant cutover",
+      "evidence": "ambiguous_access synthetic fixture and ledger evidence",
+      "first_evidence_task": "T08"
+    },
+    {
+      "id": "F06-AC-02",
+      "given": "An active legacy user has no verified issuer/subject mapping",
+      "when": "backfill runs",
+      "then": "identity remains in reconciliation and tenant gate is blocked",
+      "evidence": "missing_identity mapping test",
+      "first_evidence_task": "T08"
+    },
+    {
+      "id": "F06-AC-03",
+      "given": "A snapshot has nulls, malformed embedded data, unknown resources, locale conflicts, and report refs",
+      "when": "profiling and backfill run twice",
+      "then": "every element is accounted for; second run creates no duplicate target or ledger rows",
+      "evidence": "synthetic reconciliation totals and replay tests",
+      "first_evidence_task": "T08"
+    },
+    {
+      "id": "F06-AC-04",
+      "given": "Legacy unscoped writer can touch users from several organizations",
+      "when": "a tenant pilot is prepared",
+      "then": "writer is globally disabled or replaced by a validated scoped adapter before canary",
+      "evidence": "writer_inventory and stale_epoch rejection tests",
+      "first_evidence_task": "T08"
+    },
+    {
+      "id": "F06-AC-05",
+      "given": "Shadow decisions differ from reviewed baseline",
+      "when": "pilot gate executes",
+      "then": "unexplained added or removed permissions block cutover, including deny cases",
+      "evidence": "effective_access_manifest comparison",
+      "first_evidence_task": "T10"
+    },
+    {
+      "id": "F06-AC-06",
+      "given": "A target grant is revoked after cutover",
+      "when": "the previous compatible application is deployed",
+      "then": "target authority and revocation remain effective",
+      "evidence": "revoke_then_rollback rehearsal",
+      "first_evidence_task": "T10"
+    },
+    {
+      "id": "F06-AC-07",
+      "given": "Writer deltas remain unapplied or fence drain times out",
+      "when": "cutover is attempted",
+      "then": "tenant stays fenced in the safe prior mode with an explicit recovery action",
+      "evidence": "high_watermark and drain fault injection",
+      "first_evidence_task": "T08"
+    },
+    {
+      "id": "F06-AC-08",
+      "given": "A customer manager, ordinary staff, or expired reviewer requests a migration manifest or resolution",
+      "when": "the web workbench endpoint executes",
+      "then": "the request is denied; only explicitly authorized unexpired staff reviewers see their organization and a web resolution cannot switch authority",
+      "evidence": "migration_reviewer capability, cross-organization export, and stale review version tests",
+      "first_evidence_task": "T08"
+    }
+  ]
+}

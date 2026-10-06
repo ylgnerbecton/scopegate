@@ -1,0 +1,102 @@
+{
+  "id": "F05",
+  "title": "Publisher boundary and tenant search",
+  "status": "specified",
+  "requirements": [
+    "REQ-08",
+    "REQ-09",
+    "REQ-10"
+  ],
+  "documents": [
+    "docs/API.md",
+    "docs/DATA_MODEL.md",
+    "docs/ARCHITECTURE.md"
+  ],
+  "depends_on": [
+    "F03"
+  ],
+  "scope": [
+    "Authenticate publisher separately and version resource upserts.",
+    "Maintain normalized locale metadata and explicit fallback.",
+    "Implement tenant/project resources search with authorized views and bounded cursor pagination.",
+    "Enforce current grant policy on report configuration creation and retrieval."
+  ],
+  "excluded": [
+    "Global customer catalog",
+    "Catalog publisher managing grants",
+    "Search infrastructure before measurement",
+    "Rewriting report renderer"
+  ],
+  "invariants": [
+    "Publication does not create entitlement or grant.",
+    "Resource identity is stable across languages and versions.",
+    "view=entitled requires management authority; default view=granted enforces consumer policy.",
+    "Saved report references cannot bypass current access."
+  ],
+  "acceptance": [
+    {
+      "id": "F05-AC-01",
+      "given": "Publisher updates several locales in one payload",
+      "when": "publication succeeds",
+      "then": "one identity remains and localizations update atomically without modifying customer access",
+      "evidence": "publisher_atomic_localization tests",
+      "first_evidence_task": "T04"
+    },
+    {
+      "id": "F05-AC-02",
+      "given": "Publisher reuses a stale version or idempotency key with a different payload",
+      "when": "publication executes",
+      "then": "409; current catalog and existing customer grants remain unchanged",
+      "evidence": "catalog_version_and_key conflict tests",
+      "first_evidence_task": "T04"
+    },
+    {
+      "id": "F05-AC-03",
+      "given": "Requested locale is unavailable",
+      "when": "an authorized resource list loads",
+      "then": "fallback is explicit or a missing-metadata state renders; grants are unchanged",
+      "evidence": "locale_fallback response tests",
+      "first_evidence_task": "T07"
+    },
+    {
+      "id": "F05-AC-04",
+      "given": "Customer queries a term matching only another organization",
+      "when": "resource search executes",
+      "then": "empty authorized result and no unauthorized total/count",
+      "evidence": "tenant_search and cursor binding tests",
+      "first_evidence_task": "T07"
+    },
+    {
+      "id": "F05-AC-05",
+      "given": "A viewer requests entitled management view",
+      "when": "the endpoint executes",
+      "then": "403 without returning management inventory",
+      "evidence": "resource_view_authority test",
+      "first_evidence_task": "T07"
+    },
+    {
+      "id": "F05-AC-06",
+      "given": "A revoked resource remains in a saved report reference",
+      "when": "that report configuration is fetched or used",
+      "then": "current grant policy denies the protected content",
+      "evidence": "report_reference_reauthorization tests",
+      "first_evidence_task": "T07"
+    },
+    {
+      "id": "F05-AC-07",
+      "given": "Publisher archives while resource use runs",
+      "when": "resource locks resolve",
+      "then": "use observes a consistent published/archived boundary and no grant is invented",
+      "evidence": "two_connection_archive_use test",
+      "first_evidence_task": "T07"
+    },
+    {
+      "id": "F05-AC-08",
+      "given": "A catalog key is archived",
+      "when": "a newer publication attempts to republish it",
+      "then": "409 terminal_resource_state with no content or grant changes; replacement requires a new stable key",
+      "evidence": "terminal archival contract test",
+      "first_evidence_task": "T04"
+    }
+  ]
+}

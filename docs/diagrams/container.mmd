@@ -1,0 +1,29 @@
+flowchart TB
+    browser[Browser\nReact TypeScript Vite\nTanStack Query]
+    identity[OIDC Provider]
+    publisher[Catalog Publisher\nScoped machine credential]
+    delivery[Delivery Adapter]
+    journal[Independent Durable Journal\nPrivate live host adapter]
+
+    subgraph application[One versioned application]
+        http[FastAPI HTTP process\nPython 3.12]
+        modules[Identity Organizations Access\nInvitations Catalog Reports Audit]
+        policy[Central policy\nScoped queries and use cases]
+        persistence[SQLAlchemy 2 and psycopg 3\nOne service owned unit of work]
+        worker[Outbox worker process]
+        migration[Alembic and migration use cases]
+    end
+
+    db[(PostgreSQL 18\nDomain state Sessions Audit\nOutbox Migration ledger)]
+    browser -->|Same origin session and typed HTTP| http
+    http --> modules
+    modules --> policy
+    policy --> persistence
+    persistence -->|Transactions and composite constraints| db
+    http -->|Authorization Code and PKCE| identity
+    publisher -->|Catalog operation allowlist| http
+    modules -->|Durable prepare before access transaction| journal
+    modules -->|Outcome after commit and release| journal
+    worker -->|Claim and update delivery records| db
+    worker -->|Postcommit delivery| delivery
+    migration -->|Versioned DDL and resumable data mapping| db

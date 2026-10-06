@@ -1,0 +1,44 @@
+# Scopegate Risk Register
+
+The highest risks are unintended access, loss of revocation state during migration and false confidence in authentication or concurrency behavior. This register assigns a responsible role, a trigger, mitigation and concrete evidence. Risks remain open until their evidence is reviewed at the relevant release gate.
+
+| Risk | Owner and trigger | Impact | Mitigation and evidence | Recovery condition |
+| --- | --- | --- | --- | --- |
+| Tenant leakage | Access owner; any endpoint uses an unscoped lookup or count | Confidentiality breach | Central policy, composite foreign keys and G-DOMAIN and G-DATABASE negative coverage across detail, lists, writes and exports | Disable the affected operation; patch shared scope rule; review audit and notify through incident procedure |
+| Implicit manager or staff access | Access owner; role check replaces an explicit grant | Broader consumption than authorized | Require the full relationship predicate for all roles; G-DOMAIN and G-DATABASE manager without grant and expired staff tests | Revoke erroneous grants under the canonical writer and invalidate affected sessions or outputs as appropriate |
+| Revocation race | Access and Reports owners; authorization checked before a lock wait or outside output transaction | Output created after access was revoked | Shared and exclusive organization locks, resource row locks, clock recomputation and G-DATABASE deterministic interleavings | Stop critical use; restore a target compatible application version with the same lock protocol |
+| Deadlock or prolonged transaction | Application owner; lock inversion or unbounded report work | Availability loss and delayed revocation | Sorted resource locks, fixed order, bounded work and timeouts; G-DATABASE barriers and G-PERFORMANCE and G-OPERATIONS lock wait measurements | Abort and retry whole transactions; disable the expensive path while preserving grant state |
+| Identity collision | Identity owner; accounts merged by email or issuer validation omitted | Account takeover | Immutable issuer and subject key; no email identity merge; G-IDENTITY and G-BROWSER provider and email change tests | Block affected sessions; repair identity links through a reviewed privileged operation |
+| Invitation replay or theft | Invitations owner; token forwarded, logged or accepted twice | Unauthorized membership | Digest storage, verified email binding, clock based expiry and atomic acceptance; G-DATABASE replay and concurrency evidence | Revoke pending invitation, rotate exposed delivery secrets and inspect acceptance audit |
+| Authentication placeholder reaches pilot | Identity owner; local adapter enabled outside test or development | Authentication bypass | Startup environment validation; G-IDENTITY and G-BROWSER real provider integration and production rejection test | Stop pilot access until provider integration and negative checks pass |
+| Stale interface crosses tenants | Web owner; tenant omitted from query key or late response reused | Private metadata disclosure and invalid actions | Principal and tenant keys, cancellation and cache reset; G-IDENTITY and G-BROWSER in flight organization switch test | Release web fix and clear session cache; server policy continues to reject invalid actions |
+| Legacy writer resurrects access | Migration owner; old application writes after tenant cutover | Revocations lost and decisions diverge | Per organization write fence, canonical target and monotonic migration ledger; G-MIGRATION rejected legacy write evidence | Keep legacy fence; roll back only to a target compatible application |
+| Backfill changes access semantics | Migration owner; incomplete or ambiguous old relationships | Lost legitimate access or unintended grants | Sanitized fixture, reviewed mapping, quarantine and decision equivalence; G-MIGRATION mismatch report | Pause the organization's cutover; correct mapping and rerun resumable backfill |
+| Engine upgrade and model migration coupled | Database owner; both changed in one rollout | Ambiguous failure and expensive recovery | Separate PostgreSQL 15 source migration from PostgreSQL 18 engine upgrade; independent restore rehearsals | Recover the failed change from its own tested backup or application path |
+| Audit is incomplete or editable | Audit owner; event appended after commit or app role can update it | Unreliable investigation | Audit in same transaction, append only privileges and G-DATABASE fault injection | Disable affected mutation; repair audit path; stronger production protection uses separate immutable export |
+| Outbox exposes an invitation link | Delivery owner; raw payload appears in dump, logs or dead letter output | Token exposure | Encryption, minimal payload, redaction, retention and bounded retries; G-PERFORMANCE and G-OPERATIONS retry and secret inspection | Revoke exposed pending tokens, rotate encryption key and purge affected payloads |
+| Global catalog leaks or mutates grants | Catalog owner; customer endpoints list unentitled resources or Publisher writes grants | Metadata disclosure or escalation | Tenant scoped discovery, separate machine credential and allowlisted Publisher service; G-DOMAIN and G-DATABASE and credential scope tests | Disable compromised credential or route; review catalog audit and preserve grant state |
+| Row security introduces false assurance | Database owner; new consumer assumes owner role policies apply | Broad direct database access | Restrict consumers until ADR 5 gate; nonowner roles, fail closed context and pooled connection tests | Remove the independent consumer until policy and privilege evidence passes |
+| Scope exceeds evidence | Engineering owner; optional features delay essential correctness gates | Incomplete or unverifiable delivery | Implement vertical slices in gate order; defer infrastructure and speculative abstractions | Remove optional scope while preserving authorization, migration and evidence requirements |
+
+## Review cadence
+
+Review the register at architecture changes, gate completion and before each tenant cutover. The owner records the revision, evidence link, current exposure and next action in the release record. A new database consumer, privileged operation, asynchronous report path or external delivery provider requires a new threat and rollback review before introduction.
+
+## Decisions that require explicit evidence
+
+Timeout budgets and performance objectives come from the G-PERFORMANCE and G-OPERATIONS workload. A production tamper resistant audit export needs infrastructure and operational ownership beyond application append only privileges. An external delivery integration needs its own credential and retention validation. These are implementation gates with responsible owners, not assumed capabilities.
+
+## Additional closed design risks
+
+| Risk | User impact | Design control and gate | Stop or recovery |
+| --- | --- | --- | --- |
+| Staff expiry strands the organization | No durable owner can operate access | Non-expiring customer-manager continuity; G-DATABASE concurrency proof | Reject destructive membership command; audited platform repair |
+| Entitlement reactivation revives old permission | Access restored without review | Atomic destructive disable, whole-invite revocation, terminal archive; G-DATABASE | Reenable creates no grant; require a fresh approved assignment |
+| Impact changes after operator preview | Unreviewed large or different revocation | Fingerprint plus revision recomputed under lock; bounded fanout | 412 refresh or 409 redesign, no partial writes |
+| Same-statement lock and policy reuse a stale snapshot | Use admitted after a completed revoke | Separate lock and policy statements under READ COMMITTED; G-DATABASE | Reject stale implementation and stop affected consumption |
+| Worker crash or stale lease acknowledgement | Duplicate or lost invitation delivery | Durable lease token/generation CAS, bounded retry, provider key; G-OPERATIONS | Visible failed state and reviewed replay; acceptance remains single-use |
+| Deployment surge exhausts connection reserve | Timeouts delay commands and revocations | Summed process budget, no initial surge, drained pools; G-PERFORMANCE | Stop new admissions, preserve recovery reserve, review capacity |
+| Dependency or telemetry outage becomes hidden | Unknown delivery or unactionable failure | Deadline, breaker, backpressure, unsampled audit and bounded telemetry; G-OPERATIONS | Safe unavailability and actionable owner signal |
+| Restored database loses later decisions | Revoked access or sessions revive | External intent/outcome journal and uncertainty fencing; G-OPERATIONS | Keep affected access closed until reconciled; RPO/RTO remain unverified |
+| Unexecuted or stale proof marks release complete | Incorrect confidence and unsafe rollout | Revision/command/artifact completion verifier; G-RELEASE | Fail completion and obtain current evidence |

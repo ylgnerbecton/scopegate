@@ -1,0 +1,26 @@
+sequenceDiagram
+    autonumber
+    participant Use as Critical Report Use
+    participant Revoke as Grant Revocation
+    participant DB as PostgreSQL
+
+    Use->>DB: Begin and lock sorted resource rows FOR SHARE
+    Use->>DB: Acquire shared organization transaction lock
+    Use->>DB: New SQL statement for clock and live policy
+    Revoke->>DB: Begin and lock sorted resource rows FOR SHARE
+    Revoke->>DB: Request exclusive organization transaction lock
+    Note over Revoke,DB: Waits while earlier critical use holds shared lock
+    Use->>DB: Validate report references and create durable output
+    Use->>DB: Append audit and commit
+    DB-->>Revoke: Exclusive organization lock acquired
+    Revoke->>DB: Lock membership and check expected version
+    Revoke->>DB: New SQL statement for clock and management policy
+    Revoke->>DB: Revoke grant by difference and append audit
+    Revoke->>DB: Commit
+
+    Use->>DB: New transaction with ordered resource locks
+    Use->>DB: Acquire shared organization transaction lock
+    Use->>DB: New SQL statement for clock and live policy
+    DB-->>Use: Grant is revoked
+    Use->>DB: Roll back without creating output
+    Note over Use,DB: Publisher archival takes resource FOR UPDATE.<br/>All waits are bounded and expiration is rechecked after waits.<br/>Already committed output precedes the revocation.

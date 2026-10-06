@@ -1,0 +1,22 @@
+flowchart TD
+    expand[Expand schema with Alembic\nKeep existing writer canonical]
+    backfill[Resumable backfill\nLedger and reviewed mapping]
+    compare[Compare relationships and policy decisions]
+    review{Equivalent or reviewed restriction?}
+    quarantine[Quarantine ambiguity\nCorrect mapping and replay batch]
+    shadow[Shadow reads for selected organization\nServe canonical existing decisions]
+    fence[Fence organization legacy writes]
+    delta[Apply final delta and verify revocations]
+    cutover[Switch organization to canonical target]
+    observe[Observe tenant pilot and audit]
+    rollback[Target compatible application rollback\nKeep target schema and legacy write fence]
+    contract[Contract after verified window\nRemove obsolete reads and schema]
+    engine[Separate database engine change\nPostgreSQL 15 baseline to PostgreSQL 18\nIndependent backup and restore rehearsal]
+
+    expand --> backfill --> compare --> review
+    review -->|No| quarantine --> backfill
+    review -->|Yes| shadow --> fence --> delta --> cutover --> observe
+    observe -->|Compatible application issue| rollback --> observe
+    observe -->|All checks accepted| contract
+    expand -.->|Independent change schedule| engine
+    engine -.->|Independent recovery evidence| contract

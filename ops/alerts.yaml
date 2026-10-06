@@ -1,0 +1,22 @@
+groups:
+  - name: scopegate-local-rehearsal
+    rules:
+      - alert: ScopegateAccessDivergence
+        expr: scopegate_access_divergence > 0
+        labels: {severity: critical, owner: backend_owner}
+        annotations:
+          summary: Reviewed access decisions diverge; stop the affected rollout and fence its writes.
+          runbook: docs/OPERATIONS.md
+      - alert: ScopegateDeliveryDelay
+        expr: scopegate_pending_delivery_oldest_seconds > 300
+        for: 1m
+        labels: {severity: warning, owner: delivery_owner}
+        annotations:
+          summary: Pending delivery exceeds the local review threshold; inspect the protected outbox.
+          runbook: docs/OPERATIONS.md
+      - alert: ScopegateRestoreFenced
+        expr: scopegate_restore_fences > 0
+        labels: {severity: critical, owner: platform_owner}
+        annotations:
+          summary: Restore reconciliation must finish before affected access can reopen.
+          runbook: docs/OPERATIONS.md

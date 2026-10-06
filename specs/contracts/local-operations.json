@@ -1,0 +1,139 @@
+{
+  "stage": "local-evaluation",
+  "entrypoint": "python -m scopegate.cli",
+  "source": "backend/src/scopegate/cli.py",
+  "scope": "Synthetic inputs and separately authorized local operations; no live integration certification.",
+  "credential_inputs": [
+    "global --credential-file",
+    "SCOPEGATE_OPERATIONS_TOKEN"
+  ],
+  "worker_requires_credential": false,
+  "operations_require_credential": true,
+  "commands": [
+    {
+      "name": "profile",
+      "required_arguments": [
+        "snapshot"
+      ],
+      "outputs": [
+        "Source element totals and immutable snapshot hash"
+      ],
+      "implemented": true
+    },
+    {
+      "name": "backfill",
+      "required_arguments": [
+        "snapshot"
+      ],
+      "outputs": [
+        "Idempotent source ledger and exact mapped grants before target ownership"
+      ],
+      "implemented": true
+    },
+    {
+      "name": "compare",
+      "required_arguments": [
+        "organization-id",
+        "run-id",
+        "baseline"
+      ],
+      "outputs": [
+        "Current allow/deny comparison and manifest hashes"
+      ],
+      "implemented": true
+    },
+    {
+      "name": "fence",
+      "required_arguments": [
+        "organization-id",
+        "run-id",
+        "expected-epoch",
+        "baseline-revision",
+        "source-high-watermark",
+        "applied-high-watermark",
+        "unscoped-writer-disabled"
+      ],
+      "outputs": [
+        "Scoped write fence and monotonic epoch"
+      ],
+      "implemented": true
+    },
+    {
+      "name": "cutover",
+      "required_arguments": [
+        "organization-id",
+        "run-id",
+        "expected-epoch",
+        "baseline-hash",
+        "target-hash"
+      ],
+      "outputs": [
+        "Target authority only after current comparison and continuity gates"
+      ],
+      "implemented": true
+    },
+    {
+      "name": "unfence",
+      "required_arguments": [
+        "organization-id",
+        "expected-epoch",
+        "reason"
+      ],
+      "outputs": [
+        "Reviewed recovery in the current authority with a newer epoch"
+      ],
+      "implemented": true
+    },
+    {
+      "name": "contract",
+      "required_arguments": [
+        "organization-id",
+        "run-id"
+      ],
+      "outputs": [
+        "Non-destructive readiness report"
+      ],
+      "implemented": true
+    },
+    {
+      "name": "restore-fence",
+      "required_arguments": [
+        "organization-id",
+        "expected-epoch"
+      ],
+      "outputs": [
+        "Independent restore marker, suspended account and fenced writer"
+      ],
+      "implemented": true
+    },
+    {
+      "name": "restore-inspect",
+      "required_arguments": [
+        "organization-id"
+      ],
+      "outputs": [
+        "Bounded command references, outcomes and reviewed journal hash"
+      ],
+      "implemented": true
+    },
+    {
+      "name": "restore-reconcile",
+      "required_arguments": [
+        "organization-id",
+        "journal-hash"
+      ],
+      "outputs": [
+        "Supported restrictions, unresolved references and explicit opening result"
+      ],
+      "implemented": true
+    },
+    {
+      "name": "worker",
+      "required_arguments": [],
+      "outputs": [
+        "Bounded lease and delivery outcomes"
+      ],
+      "implemented": true
+    }
+  ]
+}

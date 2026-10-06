@@ -1,0 +1,59 @@
+sequenceDiagram
+    autonumber
+    actor Manager as Access Manager
+    participant API as Scopegate API
+    participant DB as PostgreSQL
+    participant Worker as Outbox Worker
+    participant Adapter as Delivery Adapter
+    actor Recipient
+    participant OIDC as OIDC Provider
+
+    Manager->>API: Request invitation and project resources
+    API->>DB: Begin transaction and acquire ordered locks
+    API->>DB: Validate manager and active entitlements
+    API->>DB: Insert pending token digest and resource references
+    API->>DB: Insert audit event and encrypted outbox payload
+    API->>DB: Commit
+    API-->>Manager: Invitation created
+    Worker->>DB: Claim committed outbox item
+    Worker->>Adapter: Deliver bounded invitation link
+    Adapter-->>Recipient: Invitation link
+    Worker->>DB: Record delivery outcome and purge sensitive payload
+
+    Recipient->>API: Start authenticated preview
+    API->>OIDC: Authorization Code with PKCE
+    OIDC-->>API: Validated issuer subject verified email and auth_time
+    API->>DB: Store verified session claims and resolve invitation digest
+    API->>DB: Match recipient using fresh verified session claims
+    API-->>Recipient: Organization and bounded resource plan without acceptance
+    Recipient->>API: Confirm acceptance with token and idempotency key
+    API->>DB: Begin transaction and lock sorted resource rows
+    API->>DB: Acquire exclusive organization lock
+    API->>DB: Lock applicable membership then invitation state
+    API->>DB: Recheck current session recipient binding and 15 minute auth freshness
+    alt Invalid identity recipient binding or stale authentication
+        API->>DB: Roll back
+        API-->>Recipient: Safe refusal or reauthentication requirement
+    else Current recipient verified
+        API->>DB: Read actor scoped receipt and compare request fingerprint
+        alt Matching receipt exists
+            API->>DB: End transaction without another state transition
+            API-->>Recipient: Recorded acceptance result
+        else Key reused with different fingerprint
+            API->>DB: Roll back
+            API-->>Recipient: Idempotency conflict
+        else No matching receipt
+            API->>DB: Recheck pending state expiry and entitlements after waits
+            alt Invalid token state or entitlement
+                API->>DB: Roll back
+                API-->>Recipient: Safe refusal without private target data
+            else Valid invitation and permitted membership transition
+                API->>DB: Reuse identity and membership or create membership
+                API->>DB: Apply explicit grants by difference
+                API->>DB: Mark accepted and append audit and receipt
+                API->>DB: Commit atomically
+                API-->>Recipient: Scoped access ready
+            end
+        end
+    end
+    Note over API,DB: Suspended membership is not reactivated automatically.<br/>Existing manager is not downgraded.<br/>Replay cannot create another acceptance transition.

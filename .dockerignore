@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+**/.venv
+**/node_modules
+**/dist
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+artifacts
+var
+private
+docs/evidence/private

@@ -1,0 +1,82 @@
+{
+  "id": "F02",
+  "title": "Verified identities and explicit organization relationships",
+  "status": "specified",
+  "requirements": [
+    "REQ-03",
+    "REQ-04"
+  ],
+  "documents": [
+    "docs/DATA_MODEL.md",
+    "docs/SECURITY.md"
+  ],
+  "depends_on": [
+    "F01"
+  ],
+  "scope": [
+    "Implement target constraints using Alembic and PostgreSQL.",
+    "Integrate existing OIDC issuer and session lifecycle; bootstrap first manager with privileged provisioning.",
+    "Model projects and customer/staff memberships."
+  ],
+  "excluded": [
+    "Custom password authentication",
+    "Account merge by email",
+    "Organization authority inferred from names or domains"
+  ],
+  "invariants": [
+    "Issuer and subject identify a user; email is contact data.",
+    "One membership per organization/user.",
+    "Projects and grants use composite organization keys.",
+    "Only a privileged scoped platform workflow creates managers and staff assignments."
+  ],
+  "acceptance": [
+    {
+      "id": "F02-AC-01",
+      "given": "One verified identity has memberships in organizations A and B",
+      "when": "membership A is changed",
+      "then": "membership B remains unchanged",
+      "evidence": "multi_organization_identity integration scenario",
+      "first_evidence_task": "T02"
+    },
+    {
+      "id": "F02-AC-02",
+      "given": "Two provider subjects share display email",
+      "when": "they authenticate",
+      "then": "two identities remain distinct and no membership moves automatically",
+      "evidence": "issuer_subject_identity tests",
+      "first_evidence_task": "T03"
+    },
+    {
+      "id": "F02-AC-03",
+      "given": "A project from organization B is supplied under organization A",
+      "when": "an entitlement or report association is inserted",
+      "then": "the composite foreign key rejects it, even outside the HTTP layer",
+      "evidence": "PostgreSQL structural negative tests",
+      "first_evidence_task": "T02"
+    },
+    {
+      "id": "F02-AC-04",
+      "given": "Production is configured with the local test adapter",
+      "when": "the service starts",
+      "then": "startup refuses readiness; only tested OIDC integration enables the pilot",
+      "evidence": "production_config and real-provider login/logout evidence",
+      "first_evidence_task": "T03"
+    },
+    {
+      "id": "F02-AC-05",
+      "given": "A new organization is provisioned by the permitted platform identity",
+      "when": "its first manager creation fails",
+      "then": "the organization and audit changes roll back as one unit",
+      "evidence": "bootstrap fault injection",
+      "first_evidence_task": "T03"
+    },
+    {
+      "id": "F02-AC-06",
+      "given": "A normal access manager attempts to promote another manager",
+      "when": "the administration workflow runs",
+      "then": "the customer surface provides no such transition and the command is denied",
+      "evidence": "role_escalation negative tests",
+      "first_evidence_task": "T03"
+    }
+  ]
+}

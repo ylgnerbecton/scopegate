@@ -1,0 +1,124 @@
+{
+  "id": "F08",
+  "title": "Release gates and operational ownership",
+  "status": "specified",
+  "requirements": [
+    "REQ-15",
+    "REQ-16",
+    "REQ-19",
+    "REQ-20"
+  ],
+  "documents": [
+    "docs/DELIVERY_PLAN.md",
+    "docs/QUALITY.md",
+    "docs/RISK_REGISTER.md",
+    "docs/OPERATIONS.md",
+    "docs/PRODUCT_ALIGNMENT.pt-BR.md"
+  ],
+  "depends_on": [
+    "F01",
+    "F03",
+    "F04",
+    "F05",
+    "F06",
+    "F07"
+  ],
+  "scope": [
+    "Expose local and CI gates for lint/types/tests/build/contracts/PostgreSQL/browser/migration/identity.",
+    "Record measured evidence and a concise product decision review.",
+    "Operate scoped rollout, alerts, backup/restore, and compatible application recovery."
+  ],
+  "excluded": [
+    "Claims based on unexecuted commands",
+    "Arbitrary line coverage as release evidence",
+    "Production deployment without integrations and baseline"
+  ],
+  "invariants": [
+    "A missing or skipped gate fails the release.",
+    "Evidence states command, real exit code, environment, and actual scope.",
+    "Only product and contract owners approve unresolved access policy changes.",
+    "Recovery cannot restore an old wider permission set."
+  ],
+  "acceptance": [
+    {
+      "id": "F08-AC-01",
+      "given": "The execution graph has a missing dependency, cycle, uncovered requirement, or broken link",
+      "when": "make check runs",
+      "then": "nonzero exit identifies the actionable violation",
+      "evidence": "specification validator output",
+      "first_evidence_task": "T10"
+    },
+    {
+      "id": "F08-AC-02",
+      "given": "Runtime tool or required integration is unavailable",
+      "when": "a release check runs",
+      "then": "the gate records failure/blocker rather than success or skip",
+      "evidence": "CI negative gate rehearsal",
+      "first_evidence_task": "T10"
+    },
+    {
+      "id": "F08-AC-03",
+      "given": "The minimum release is ready",
+      "when": "milestone review occurs",
+      "then": "every stated scenario has implementation evidence and remaining work is labeled",
+      "evidence": "completed evidence map and product alignment",
+      "first_evidence_task": "T12"
+    },
+    {
+      "id": "F08-AC-04",
+      "given": "An access mismatch appears in canary",
+      "when": "alert and runbook execute",
+      "then": "rollout stops, affected writes fence, owner investigates, and unaffected accounts continue",
+      "evidence": "synthetic mismatch incident drill",
+      "first_evidence_task": "T11"
+    },
+    {
+      "id": "F08-AC-05",
+      "given": "Database is restored to before a later revocation",
+      "when": "recovery reconciliation executes",
+      "then": "traffic remains blocked until durable journal reconciliation prevents restored access",
+      "evidence": "restore/revocation drill",
+      "first_evidence_task": "T11"
+    },
+    {
+      "id": "F08-AC-06",
+      "given": "The synthetic workload runs at steady and burst traffic",
+      "when": "database queues and connection demand grow",
+      "then": "bounded deadlines and backpressure hold; no fail-open policy and measured connection demand fits the budget",
+      "evidence": "G-PERFORMANCE workload artifacts",
+      "first_evidence_task": "T10"
+    },
+    {
+      "id": "F08-AC-07",
+      "given": "A release candidate contains a dependency or configuration defect",
+      "when": "supply-chain and security gates execute",
+      "then": "SBOM, locked dependency audit, threat tests and startup validation block an unreviewed release",
+      "evidence": "G-SECURITY scan and startup failure artifacts",
+      "first_evidence_task": "T10"
+    },
+    {
+      "id": "F08-AC-08",
+      "given": "A required runtime gate is missing, skipped or from another revision",
+      "when": "release evidence validation runs",
+      "then": "nonzero exit blocks completion and identifies missing proof",
+      "evidence": "evidence validator negative fixtures",
+      "first_evidence_task": "T01"
+    },
+    {
+      "id": "F08-AC-09",
+      "given": "Access divergence or outbox delay is injected",
+      "when": "alerts and the operator runbook execute",
+      "then": "the owner receives a scoped actionable signal and exercises containment without leaking identifiers into metrics",
+      "evidence": "G-OPERATIONS alert and fault drill evidence",
+      "first_evidence_task": "T10"
+    },
+    {
+      "id": "F08-AC-10",
+      "given": "Engineering standards are reviewed for a milestone",
+      "when": "a technique is applied or deferred",
+      "then": "every standard has rationale, ownership, verification and a revisit condition; decisions never substitute for measured evidence",
+      "evidence": "standards traceability and design review record",
+      "first_evidence_task": "T01"
+    }
+  ]
+}

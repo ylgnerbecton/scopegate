@@ -1,0 +1,66 @@
+{
+  "format": "scopegate-synthetic-v1",
+  "records": [
+    {
+      "source_kind": "grant",
+      "source_key": "grant-reviewed-001",
+      "organization_id": "20000000-0000-4000-8000-000000000001",
+      "issuer": "http://localhost:8901",
+      "subject": "viewer-cedar",
+      "baseline_allowed": true,
+      "project_id": "30000000-0000-4000-8000-000000000001",
+      "resource_id": "40000000-0000-4000-8000-000000000001",
+      "source_sequence": 1
+    },
+    {
+      "source_kind": "grant",
+      "source_key": "grant-ambiguous-001",
+      "organization_id": "20000000-0000-4000-8000-000000000001",
+      "issuer": "http://localhost:8901",
+      "subject": "viewer-cedar",
+      "baseline_allowed": null,
+      "project_id": "30000000-0000-4000-8000-000000000001",
+      "resource_id": "40000000-0000-4000-8000-000000000002",
+      "issues": [
+        "Embedded scope fields disagree. Exact effective access is unverified."
+      ],
+      "source_sequence": 2
+    },
+    {
+      "source_kind": "report_ref",
+      "source_key": "report-reference-001",
+      "organization_id": "20000000-0000-4000-8000-000000000001",
+      "issues": [
+        "Embedded report resource reference is malformed or unknown."
+      ],
+      "source_sequence": 3
+    },
+    {
+      "source_kind": "localization",
+      "source_key": "locale-conflict-001",
+      "organization_id": "20000000-0000-4000-8000-000000000001",
+      "issues": [
+        "More than one localized row claims the same stable resource and locale."
+      ],
+      "source_sequence": 4
+    },
+    {
+      "source_kind": "grant",
+      "source_key": "identity-missing-001",
+      "organization_id": "20000000-0000-4000-8000-000000000001",
+      "baseline_allowed": true,
+      "project_id": "30000000-0000-4000-8000-000000000001",
+      "resource_id": "40000000-0000-4000-8000-000000000003",
+      "issues": [
+        "Verified issuer and subject mapping is unavailable."
+      ],
+      "source_sequence": 5
+    },
+    {
+      "source_kind": "retained",
+      "source_key": "isolated-source-001",
+      "organization_id": "20000000-0000-4000-8000-000000000001",
+      "source_sequence": 6
+    }
+  ]
+}

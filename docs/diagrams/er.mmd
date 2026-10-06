@@ -1,0 +1,156 @@
+erDiagram
+    USERS {
+        uuid id PK
+        text issuer
+        text subject
+        text email
+    }
+    ORGANIZATIONS {
+        uuid id PK
+        text name
+    }
+    PROJECTS {
+        uuid id PK
+        uuid organization_id FK
+    }
+    MEMBERSHIPS {
+        uuid id PK
+        uuid organization_id FK
+        uuid user_id FK
+        text role
+        text status
+        text kind
+        boolean can_review_migration
+        timestamptz expires_at
+        bigint access_version
+    }
+    RESOURCES {
+        uuid id PK
+        text external_key UK
+        bigint catalog_version
+        text status
+    }
+    RESOURCE_LOCALIZATIONS {
+        uuid resource_id PK,FK
+        text locale PK
+        text title
+    }
+    PROJECT_RESOURCES {
+        uuid organization_id PK,FK
+        uuid project_id PK,FK
+        uuid resource_id PK,FK
+        text status
+        bigint entitlement_version
+    }
+    RESOURCE_GRANTS {
+        uuid organization_id PK,FK
+        uuid membership_id PK,FK
+        uuid project_id PK,FK
+        uuid resource_id PK,FK
+        text state
+    }
+    INVITATIONS {
+        uuid id PK
+        uuid organization_id FK
+        text recipient_email_normalized
+        text role
+        text token_hash UK
+        text state
+        timestamptz expires_at
+    }
+    INVITATION_RESOURCES {
+        uuid organization_id PK,FK
+        uuid invitation_id PK,FK
+        uuid project_id PK,FK
+        uuid resource_id PK,FK
+    }
+    REPORT_CONFIGS {
+        uuid id PK
+        uuid organization_id FK
+    }
+    REPORT_RESOURCE_REFS {
+        uuid organization_id PK,FK
+        uuid report_config_id PK,FK
+        uuid project_id PK,FK
+        uuid resource_id PK,FK
+    }
+    SESSIONS {
+        uuid id PK
+        text token_hash UK
+        uuid user_id FK
+        text verified_email
+        boolean email_verified
+        timestamptz authenticated_at
+        timestamptz claims_verified_at
+        timestamptz created_at
+        timestamptz last_seen_at
+        timestamptz expires_at
+    }
+    COMMAND_RECEIPTS {
+        text actor_key PK
+        uuid organization_id PK,FK
+        text operation PK
+        text idempotency_key PK
+        text request_hash
+        text journal_reference
+        timestamptz expires_at
+    }
+    AUDIT_EVENTS {
+        uuid id PK
+        uuid organization_id FK
+        text action
+        text journal_reference
+        timestamptz created_at
+    }
+    OUTBOX_MESSAGES {
+        uuid id PK
+        uuid organization_id FK
+        uuid invitation_id FK
+        text state
+        uuid lease_token
+        timestamptz lease_expires_at
+        bigint replay_generation
+        integer generation_attempts
+        timestamptz retry_deadline_at
+        timestamptz payload_purged_at
+    }
+    MIGRATION_LEDGER {
+        uuid id PK
+        uuid run_id FK
+        uuid organization_id FK
+        text source_kind
+        text source_key
+        text outcome
+    }
+    MIGRATION_RUNS {
+        uuid id PK
+        text snapshot_hash
+        text policy_version
+        text state
+    }
+
+    USERS ||--o{ MEMBERSHIPS : joins
+    USERS ||--o{ SESSIONS : authenticates
+    ORGANIZATIONS ||--o{ PROJECTS : owns
+    ORGANIZATIONS ||--o{ MEMBERSHIPS : contains
+    ORGANIZATIONS ||--o{ INVITATIONS : issues
+    ORGANIZATIONS ||--o{ REPORT_CONFIGS : owns
+    ORGANIZATIONS |o--o{ AUDIT_EVENTS : records
+    ORGANIZATIONS |o--o{ MIGRATION_LEDGER : maps
+    ORGANIZATIONS ||--o{ COMMAND_RECEIPTS : scopes
+    MIGRATION_RUNS ||--o{ MIGRATION_LEDGER : checkpoints
+    PROJECTS ||--o{ PROJECT_RESOURCES : entitles
+    RESOURCES ||--o{ PROJECT_RESOURCES : available
+    RESOURCES ||--o{ RESOURCE_LOCALIZATIONS : localizes
+    MEMBERSHIPS ||--o{ RESOURCE_GRANTS : receives
+    PROJECT_RESOURCES ||--o{ RESOURCE_GRANTS : constrains
+    INVITATIONS ||--o{ INVITATION_RESOURCES : proposes
+    PROJECT_RESOURCES ||--o{ INVITATION_RESOURCES : constrains
+    REPORT_CONFIGS ||--o{ REPORT_RESOURCE_REFS : references
+    PROJECT_RESOURCES ||--o{ REPORT_RESOURCE_REFS : constrains
+    INVITATIONS |o--o{ OUTBOX_MESSAGES : delivers
+
+    %% Composite uniqueness: users issuer and subject; memberships organization and user.
+    %% Tenant foreign keys include organization even when the diagram displays separate fields.
+    %% Staff expiration is required. Resource deletion is restricted. Expired invitations are derived.
+    %% The schema specification is authoritative for column names, constraints and supporting tables.

@@ -1,0 +1,19 @@
+{
+  "format": "scopegate-decisions-v1",
+  "decisions": [
+    {
+      "principal_key": "http://localhost:8901|viewer-cedar",
+      "project_key": "30000000-0000-4000-8000-000000000001",
+      "resource_key": "market-pulse",
+      "action": "consume",
+      "allowed": true
+    },
+    {
+      "principal_key": "http://localhost:8901|guest-invite",
+      "project_key": "30000000-0000-4000-8000-000000000001",
+      "resource_key": "market-pulse",
+      "action": "consume",
+      "allowed": false
+    }
+  ]
+}

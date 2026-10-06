@@ -1,0 +1,130 @@
+{
+  "id": "F04",
+  "title": "Finite invitation onboarding",
+  "status": "specified",
+  "requirements": [
+    "REQ-07"
+  ],
+  "documents": [
+    "docs/API.md",
+    "docs/DATA_MODEL.md",
+    "docs/SECURITY.md"
+  ],
+  "depends_on": [
+    "F03"
+  ],
+  "scope": [
+    "Create, deliver, list, resend, revoke, expire, and accept invitations.",
+    "Capture explicit viewer grant selection and bind acceptance to verified recipient identity.",
+    "Persist membership, grants, token consumption, audit, receipt, and outbox atomically as applicable."
+  ],
+  "excluded": [
+    "Open self-signup approval queue",
+    "Customer manager promotion",
+    "Email delivery interpreted as acceptance"
+  ],
+  "invariants": [
+    "Raw token never appears in ordinary responses, logs, or audit.",
+    "An invitation cannot grant resources outside project entitlement.",
+    "Current entitlement and membership state are rechecked at acceptance.",
+    "Resend invalidates the earlier token."
+  ],
+  "acceptance": [
+    {
+      "id": "F04-AC-01",
+      "given": "A verified recipient accepts a valid invitation",
+      "when": "acceptance commits",
+      "then": "one membership and only selected grants exist with accepted state and audit",
+      "evidence": "new_recipient complete journey",
+      "first_evidence_task": "T06"
+    },
+    {
+      "id": "F04-AC-02",
+      "given": "An existing viewer or manager accepts another invitation",
+      "when": "acceptance commits",
+      "then": "identity/membership are reused; existing manager role is not downgraded",
+      "evidence": "existing_identity reuse tests",
+      "first_evidence_task": "T06"
+    },
+    {
+      "id": "F04-AC-03",
+      "given": "A token is submitted by another verified recipient",
+      "when": "acceptance executes",
+      "then": "recipient mismatch denies without revealing invitation state",
+      "evidence": "wrong_recipient and unverified_email tests",
+      "first_evidence_task": "T06"
+    },
+    {
+      "id": "F04-AC-04",
+      "given": "The token is expired, revoked, or previously used with a new key",
+      "when": "acceptance executes",
+      "then": "no new grants or audit transitions occur; verified recipient gets defined unavailable state",
+      "evidence": "expiry_revoke_replay tests",
+      "first_evidence_task": "T06"
+    },
+    {
+      "id": "F04-AC-05",
+      "given": "Two acceptance requests race on the same token",
+      "when": "both transactions execute",
+      "then": "only one transition commits; matching retry uses receipt, other replay is rejected",
+      "evidence": "two_connection_acceptance race",
+      "first_evidence_task": "T06"
+    },
+    {
+      "id": "F04-AC-06",
+      "given": "An entitlement is disabled after invitation issue",
+      "when": "recipient accepts",
+      "then": "state conflict and no partial membership/grant commit",
+      "evidence": "changed_entitlement and archived_resource tests",
+      "first_evidence_task": "T06"
+    },
+    {
+      "id": "F04-AC-07",
+      "given": "Delivery fails or repeats",
+      "when": "outbox sender retries",
+      "then": "invitation stays pending, delivery key is stable, bounded retries become visible",
+      "evidence": "outbox retry adapter tests",
+      "first_evidence_task": "T06"
+    },
+    {
+      "id": "F04-AC-08",
+      "given": "An existing member is suspended",
+      "when": "a fresh invitation is accepted",
+      "then": "acceptance cannot silently reactivate them; manager action is required",
+      "evidence": "suspended_existing_member test",
+      "first_evidence_task": "T06"
+    },
+    {
+      "id": "F04-AC-09",
+      "given": "A verified invited recipient has no organization membership",
+      "when": "the authenticated token preview loads",
+      "then": "only intended organization/project/resource labels are returned without consuming the token; wrong, stale, expired, or unverified recipients cannot inspect it",
+      "evidence": "recipient_preview visibility and auth freshness tests",
+      "first_evidence_task": "T06"
+    },
+    {
+      "id": "F04-AC-10",
+      "given": "A sender crashes after provider delivery before acknowledgement",
+      "when": "the lease expires and another worker retries",
+      "then": "a stale lease cannot finalize; duplicate delivery cannot duplicate acceptance or grants",
+      "evidence": "controlled outbox crash lease CAS test",
+      "first_evidence_task": "T06"
+    },
+    {
+      "id": "F04-AC-11",
+      "given": "A message exhausts attempts or its retry deadline",
+      "when": "the delivery worker or an operator processes it",
+      "then": "terminal failure is visible; replay is reviewed, bounded and impossible after ciphertext purge or invitation expiry",
+      "evidence": "DLQ replay and purge integration tests",
+      "first_evidence_task": "T06"
+    },
+    {
+      "id": "F04-AC-12",
+      "given": "An old invitation delivery remains pending",
+      "when": "resend or entitlement revocation invalidates the invitation",
+      "then": "worker rechecks current invitation before delivery; any racing delivered old token fails acceptance",
+      "evidence": "stale delivery and token lifecycle regression",
+      "first_evidence_task": "T06"
+    }
+  ]
+}

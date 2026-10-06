@@ -1,0 +1,118 @@
+name: scopegate
+services:
+  database:
+    image: postgres:18@sha256:fc973eb97c9fd04bfa1840e0f510719a584ccb3be8debfe6a4144637a9dfe8cf
+    environment:
+      POSTGRES_DB: scopegate
+      POSTGRES_PASSWORD: ${SCOPEGATE_DB_PASSWORD:?Run make setup first}
+    command: ["postgres", "-c", "max_connections=60", "-c", "shared_buffers=128MB"]
+    ports: ["127.0.0.1:5547:5432"]
+    volumes: ["database:/var/lib/postgresql"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d scopegate"]
+      interval: 2s
+      timeout: 1s
+      retries: 20
+    mem_limit: 512m
+    cpus: 1
+    restart: unless-stopped
+    labels: {scopegate.owner: scopegate}
+  initialize:
+    build: {context: ., dockerfile: backend/Dockerfile}
+    environment:
+      SCOPEGATE_ENVIRONMENT: local
+      SCOPEGATE_DATABASE_URL: postgresql+psycopg://scopegate_app:${SCOPEGATE_APP_DB_PASSWORD:?Run make setup first}@database:5432/scopegate
+      SCOPEGATE_MIGRATION_DATABASE_URL: postgresql+psycopg://postgres:${SCOPEGATE_DB_PASSWORD}@database:5432/scopegate
+      SCOPEGATE_COMPONENT: bootstrap
+      SCOPEGATE_OUTBOX_KEY: ${SCOPEGATE_OUTBOX_KEY}
+      SCOPEGATE_OIDC_ISSUER: http://localhost:8901
+      SCOPEGATE_PUBLIC_ORIGIN: http://localhost:5187
+      SCOPEGATE_ALEMBIC_EXECUTABLE: /app/backend/.venv/bin/alembic
+    volumes: ["journal:/app/var/journal", "mailbox:/app/var/mailbox"]
+    command: ["python", "-m", "scopegate.bootstrap"]
+    depends_on: {database: {condition: service_healthy}}
+    mem_limit: 256m
+  identity:
+    build: {context: ., dockerfile: backend/Dockerfile}
+    environment:
+      SCOPEGATE_ENVIRONMENT: local
+      SCOPEGATE_OIDC_ISSUER: http://localhost:8901
+      SCOPEGATE_OIDC_REDIRECT_URI: http://localhost:5187/auth/callback
+    command: ["uvicorn", "identity_provider.app:app", "--host", "0.0.0.0", "--port", "8901", "--no-access-log"]
+    ports: ["127.0.0.1:8901:8901"]
+    volumes: ["identity:/app/var/identity"]
+    mem_limit: 256m
+    restart: unless-stopped
+  api:
+    build: {context: ., dockerfile: backend/Dockerfile}
+    environment:
+      SCOPEGATE_ENVIRONMENT: local
+      SCOPEGATE_DATABASE_URL: postgresql+psycopg://scopegate_app:${SCOPEGATE_APP_DB_PASSWORD:?Run make setup first}@database:5432/scopegate
+      SCOPEGATE_MIGRATION_DATABASE_URL: ""
+      SCOPEGATE_COMPONENT: api
+      SCOPEGATE_SESSION_SECRET: ${SCOPEGATE_SESSION_SECRET}
+      SCOPEGATE_CURSOR_SECRET: ${SCOPEGATE_CURSOR_SECRET}
+      SCOPEGATE_OUTBOX_KEY: ${SCOPEGATE_OUTBOX_KEY}
+      SCOPEGATE_PLATFORM_KEY: ${SCOPEGATE_PLATFORM_KEY}
+      SCOPEGATE_CATALOG_KEY: ${SCOPEGATE_CATALOG_KEY}
+      SCOPEGATE_PUBLIC_ORIGIN: http://localhost:5187
+      SCOPEGATE_OIDC_ISSUER: http://localhost:8901
+      SCOPEGATE_OIDC_REDIRECT_URI: http://localhost:5187/auth/callback
+      SCOPEGATE_OIDC_INTERNAL_URL: http://identity:8901
+      SCOPEGATE_JOURNAL_DIRECTORY: /app/var/journal
+      SCOPEGATE_MAILBOX_DIRECTORY: /app/var/mailbox
+    command: ["uvicorn", "scopegate.main:app", "--host", "0.0.0.0", "--port", "8457", "--workers", "2", "--no-access-log", "--timeout-graceful-shutdown", "30"]
+    depends_on: {initialize: {condition: service_completed_successfully}, identity: {condition: service_started}}
+    ports: ["127.0.0.1:8457:8457"]
+    volumes: ["journal:/app/var/journal", "mailbox:/app/var/mailbox"]
+    mem_limit: 512m
+    cpus: 1
+    stop_grace_period: 40s
+    restart: unless-stopped
+  worker:
+    build: {context: ., dockerfile: backend/Dockerfile}
+    environment:
+      SCOPEGATE_ENVIRONMENT: local
+      SCOPEGATE_DATABASE_URL: postgresql+psycopg://scopegate_app:${SCOPEGATE_APP_DB_PASSWORD:?Run make setup first}@database:5432/scopegate
+      SCOPEGATE_MIGRATION_DATABASE_URL: ""
+      SCOPEGATE_COMPONENT: worker
+      SCOPEGATE_OUTBOX_KEY: ${SCOPEGATE_OUTBOX_KEY}
+      SCOPEGATE_POOL_SIZE: 2
+      SCOPEGATE_MAX_OVERFLOW: 0
+      SCOPEGATE_MAILBOX_DIRECTORY: /app/var/mailbox
+    command: ["python", "-m", "scopegate.worker"]
+    depends_on: {initialize: {condition: service_completed_successfully}}
+    volumes: ["mailbox:/app/var/mailbox"]
+    mem_limit: 256m
+    stop_grace_period: 40s
+    restart: unless-stopped
+  web:
+    build: {context: ./frontend, dockerfile: Dockerfile}
+    depends_on: {api: {condition: service_started}}
+    ports: ["127.0.0.1:5187:8080"]
+    mem_limit: 128m
+    restart: unless-stopped
+  operations:
+    profiles: [maintenance]
+    build: {context: ., dockerfile: backend/Dockerfile}
+    environment:
+      SCOPEGATE_ENVIRONMENT: local
+      SCOPEGATE_COMPONENT: operations
+      SCOPEGATE_DATABASE_URL: postgresql+psycopg://scopegate_app:${SCOPEGATE_APP_DB_PASSWORD:?Run make setup first}@database:5432/scopegate
+      SCOPEGATE_OUTBOX_KEY: ${SCOPEGATE_OUTBOX_KEY}
+      SCOPEGATE_MIGRATION_OPS_KEY: ${SCOPEGATE_MIGRATION_OPS_KEY}
+      SCOPEGATE_OPERATIONS_TOKEN: ${SCOPEGATE_MIGRATION_OPS_KEY}
+      SCOPEGATE_JOURNAL_DIRECTORY: /app/var/journal
+      SCOPEGATE_MAILBOX_DIRECTORY: /app/var/mailbox
+      SCOPEGATE_POOL_SIZE: 2
+      SCOPEGATE_MAX_OVERFLOW: 0
+    entrypoint: ["python", "-m", "scopegate.cli"]
+    command: ["--help"]
+    volumes: ["journal:/app/var/journal", "mailbox:/app/var/mailbox", "./fixtures/migration:/app/fixtures/migration:ro"]
+    depends_on: {database: {condition: service_healthy}}
+    mem_limit: 256m
+volumes:
+  database:
+  identity:
+  journal:
+  mailbox:
