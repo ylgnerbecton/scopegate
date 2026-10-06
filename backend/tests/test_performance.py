@@ -4,19 +4,12 @@ This short synthetic sample establishes a reproducible evaluation profile. It
 does not certify the proposed live traffic, full data sizes or monthly SLO.
 """
 
-import asyncio
 import json
-import math
-import os
-import socket
-import subprocess
-import sys
 import threading
 import time
-from collections import Counter
 from pathlib import Path
+from runpy import run_path
 
-import httpx
 import pytest
 from sqlalchemy import event, text
 
@@ -25,85 +18,6 @@ from scopegate.config import get_settings
 from scopegate.services import catalog, identity
 
 ROOT = Path(__file__).resolve().parents[2]
-BASE = "http://127.0.0.1:8458"
-
-
-def percentile(values, fraction):
-    ordered = sorted(values)
-    return ordered[max(0, math.ceil(len(ordered) * fraction) - 1)] if ordered else None
-
-
-def summarize(results, scheduled_rate=None, duration=None):
-    milliseconds = [item["elapsed_ms"] for item in results]
-    return {
-        "requests": len(results),
-        "scheduled_rate_rps": scheduled_rate,
-        "schedule_seconds": duration,
-        "status_counts": dict(Counter(str(item["status"]) for item in results)),
-        "latency_ms": {
-            "p50": percentile(milliseconds, 0.5),
-            "p95": percentile(milliseconds, 0.95),
-            "max": max(milliseconds, default=0),
-        },
-        "all_responses_within_2_seconds": all(value <= 2000 for value in milliseconds),
-    }
-
-
-async def request_sample(client, endpoint, opaque, scheduled_at, method="GET", body=None):
-    headers = {"Cookie": f"{identity.SESSION_COOKIE}={opaque}"}
-    if method == "POST":
-        headers.update({"Origin": get_settings().public_origin, "X-CSRF-Token": identity.csrf_value(opaque)})
-    try:
-        response = await client.request(method, endpoint, headers=headers, json=body)
-        status = response.status_code
-    except httpx.HTTPError as error:
-        status = type(error).__name__
-    return {"status": status, "elapsed_ms": round((time.perf_counter() - scheduled_at) * 1000, 3)}
-
-
-async def measured_phase(endpoint, sessions, rate, duration):
-    limits = httpx.Limits(max_connections=32, max_keepalive_connections=16)
-    async with httpx.AsyncClient(base_url=BASE, timeout=2, limits=limits) as client:
-        started, jobs = time.perf_counter(), []
-        for index in range(rate * duration):
-            scheduled_at = started + index / rate
-            await asyncio.sleep(max(0, scheduled_at - time.perf_counter()))
-            jobs.append(
-                asyncio.create_task(
-                    request_sample(client, endpoint, sessions[index % len(sessions)], scheduled_at)
-                )
-            )
-        results = await asyncio.gather(*jobs)
-    return summarize(results, rate, duration)
-
-
-async def simultaneous_fault(endpoint, sessions):
-    async with httpx.AsyncClient(base_url=BASE, timeout=2, limits=httpx.Limits(max_connections=40)) as client:
-        started = time.perf_counter()
-        results = await asyncio.gather(
-            *(
-                request_sample(client, endpoint, sessions[index % len(sessions)], started)
-                for index in range(40)
-            )
-        )
-    return summarize(results)
-
-
-async def denied_probes(endpoint, sessions, project_id, resource_id):
-    async with httpx.AsyncClient(base_url=BASE, timeout=2) as client:
-        results = []
-        for index in range(20):
-            results.append(
-                await request_sample(
-                    client,
-                    endpoint,
-                    sessions[index % len(sessions)],
-                    time.perf_counter(),
-                    "POST",
-                    {"project_id": project_id, "resource_id": resource_id},
-                )
-            )
-    return summarize(results)
 
 
 def seed_query_profile(admin_engine, ids):
@@ -201,7 +115,7 @@ def inspect_query_plans(viewer, ids):
 class ConnectionSampler:
     def __init__(self, admin_engine):
         self.engine, self.peak, self.stop = admin_engine, 0, threading.Event()
-        self.errors = []
+        self.errors, self.started = [], False
         self.thread = threading.Thread(target=self.sample, daemon=True)
 
     def sample(self):
@@ -220,53 +134,20 @@ class ConnectionSampler:
             self.errors.append(type(error).__name__)
 
     def start(self):
+        self.started = True
         self.thread.start()
 
     def finish(self):
         self.stop.set()
         self.thread.join(timeout=2)
-        assert not self.thread.is_alive() and not self.errors
+        if self.thread.is_alive():
+            self.errors.append("sampler_stop_deadline")
 
 
-def start_server(log):
-    with socket.socket() as probe:
-        assert probe.connect_ex(("127.0.0.1", 8458)) != 0, "The isolated benchmark port is already occupied"
-    environment = {**os.environ, "SCOPEGATE_ENVIRONMENT": "test", "SCOPEGATE_OTEL_EXPORT_ENABLED": "false"}
-    process = subprocess.Popen(
-        [
-            sys.executable,
-            "-m",
-            "uvicorn",
-            "scopegate.main:app",
-            "--host",
-            "127.0.0.1",
-            "--port",
-            "8458",
-            "--workers",
-            "1",
-            "--no-access-log",
-            "--log-level",
-            "warning",
-        ],
-        cwd=ROOT / "backend",
-        env=environment,
-        stdout=log,
-        stderr=subprocess.STDOUT,
-    )
-    deadline = time.monotonic() + 10
-    with httpx.Client(base_url=BASE, timeout=0.5) as client:
-        while time.monotonic() < deadline:
-            if process.poll() is not None:
-                raise AssertionError("The dedicated benchmark server exited before readiness")
-            try:
-                if client.get("/health/ready").status_code == 200:
-                    return process
-            except httpx.HTTPError:
-                pass
-            time.sleep(0.05)
-    process.terminate()
-    process.wait(timeout=5)
-    raise AssertionError("The benchmark server did not become ready within ten seconds")
+def start_server(artifacts):
+    current_application = run_path(str(ROOT / "scripts/rehearse_rollback.py"))["current_application"]
+    return current_application(ROOT, get_settings(), port=8458, pool_size=4, max_overflow=1,
+                               cpu=1, memory_bytes=512 * 1024 * 1024, logs=artifacts / "server.log")
 
 
 @pytest.mark.performance
@@ -292,7 +173,10 @@ def test_real_http_local_capacity_and_fail_closed_pressure(seed, admin_engine, i
     db.get_engine().dispose()  # The sampled runtime connections now belong only to the dedicated API.
     org, project = ids["organizations"]["cedar"], ids["projects"]["harbor"]
     endpoint = f"/api/v1/organizations/{org}/projects/{project}/resources?limit=25"
-    sampler, process = ConnectionSampler(admin_engine), None
+    configuration = {"endpoint": endpoint, "sessions": [
+        {"opaque": opaque, "csrf": identity.csrf_value(opaque)} for opaque in sessions
+    ], "session_cookie": identity.SESSION_COOKIE, "origin": get_settings().public_origin}
+    sampler, runtime = ConnectionSampler(admin_engine), None
     report = {
         "profile": "short-local-synthetic",
         "full_production_capacity_validated": False,
@@ -320,36 +204,42 @@ def test_real_http_local_capacity_and_fail_closed_pressure(seed, admin_engine, i
         "query_evidence": queries,
     }
     try:
-        with (artifacts / "server.log").open("w") as log:
-            process = start_server(log)
+        with start_server(artifacts) as runtime:
+            report["runtime"] = runtime.metadata()
+            report["runtime"]["traffic_measurement"] = (
+                "Dedicated load generator container to owned API over Compose network; "
+                "incoming browser, published-port and edge transport unmeasured"
+            )
+            assert runtime.limits == {"cpu": 1, "memory_bytes": 512 * 1024 * 1024}
+            report["preflight"] = runtime.run_driver({**configuration, "operation": "warmup"})
+            assert report["preflight"]["status_counts"] == {"200": 10}
+            assert report["preflight"]["all_responses_within_2_seconds"]
+            report["container_before_workloads"] = runtime.statistics()
             sampler.start()
-            report["workloads"] = {
-                str(rate): asyncio.run(measured_phase(endpoint, sessions, rate, 2)) for rate in (10, 40, 160)
-            }
+            report["workloads"] = runtime.run_driver({**configuration, "operation": "load"})
             with admin_engine.begin() as conn:
                 conn.execute(
                     text("SELECT id FROM sessions WHERE user_id=:user FOR UPDATE"),
                     {"user": ids["users"]["viewer-cedar"]},
                 ).all()
-                report["blocked_identity_fault"] = asyncio.run(simultaneous_fault(endpoint, sessions))
-            report["forbidden_resource_probes"] = asyncio.run(
-                denied_probes(
-                    f"/api/v1/organizations/{org}/access-decisions",
-                    sessions,
-                    project,
-                    ids["resources"]["revenue-compass"],
-                )
-            )
+                report["blocked_identity_fault"] = runtime.run_driver({**configuration, "operation": "fault"})
+            report["forbidden_resource_probes"] = runtime.run_driver({
+                **configuration, "operation": "deny", "endpoint": f"/api/v1/organizations/{org}/access-decisions",
+                "body": {"project_id": project, "resource_id": ids["resources"]["revenue-compass"]},
+            })
+            report["load_generators"] = runtime.driver_metadata
+            report["container_after_workloads"] = runtime.statistics()
     finally:
-        if sampler.thread.is_alive():
+        if sampler.started:
             sampler.finish()
-        if process is not None:
-            process.terminate()
-            process.wait(timeout=5)
+        report["connection_sampler"] = {"started": sampler.started, "errors": sampler.errors,
+                                        "thread_stopped": not sampler.thread.is_alive()}
+        report["owned_resources_removed"] = runtime is not None and runtime.cleaned
         report["api_connection_peak"] = sampler.peak
         report["connection_cap_observed"] = sampler.peak <= 5
         (artifacts / "report.json").write_text(json.dumps(report, indent=2, default=str) + "\n")
     assert 1 <= sampler.peak <= 5
+    assert sampler.started and not sampler.thread.is_alive() and not sampler.errors
     assert report["forbidden_resource_probes"]["status_counts"] == {"404": 20}
     fault = report["blocked_identity_fault"]["status_counts"]
     assert set(fault) <= {"429", "503"} and sum(fault.values()) == 40, (
