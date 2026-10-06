@@ -5,7 +5,9 @@ import { randomUUID } from 'node:crypto';
 import { chromium, expect } from '@playwright/test';
 
 const baseURL = process.env.SCOPEGATE_WEB_URL ?? 'http://localhost:5187';
-const output = fileURLToPath(new URL('../../artifacts/browser/screenshots/', import.meta.url));
+const output = process.env.SCOPEGATE_SCREENSHOT_DIRECTORY
+  ? `${process.env.SCOPEGATE_SCREENSHOT_DIRECTORY.replace(/\/$/, '')}/`
+  : fileURLToPath(new URL('../../artifacts/browser/screenshots/', import.meta.url));
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   channel:
@@ -16,6 +18,7 @@ const page = await context.newPage();
 const organization = '/api/v1/organizations/20000000-0000-4000-8000-000000000001';
 let invitationId;
 let headers;
+let delivery;
 async function capture(name) {
   await page.evaluate(() => globalThis.document.fonts.ready);
   const fullPage = (await page.getByRole('dialog').count()) === 0 && name !== '09-audit-activity';
@@ -43,11 +46,51 @@ async function readyOverview() {
   await expect(page.locator('.activity-preview .audit-event').first()).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);
 }
+async function prepareRecipientInvitation() {
+  const session = await (await page.request.get('/api/v1/me')).json();
+  headers = { 'X-CSRF-Token': session.csrf_token, Origin: baseURL };
+  const existing = await page.request.get(`${organization}/mailbox`);
+  expect(existing.status()).toBe(200);
+  const previous = new Set((await existing.json()).items.map((message) => message.accept_url));
+  const created = await page.request.post(`${organization}/invitations`, {
+    headers: { ...headers, 'Idempotency-Key': randomUUID() },
+    data: {
+      email: 'morgan@example.test',
+      expires_in_hours: 24,
+      resources: [
+        {
+          project_id: '30000000-0000-4000-8000-000000000001',
+          resource_id: '40000000-0000-4000-8000-000000000001',
+        },
+      ],
+    },
+  });
+  expect(created.status()).toBe(201);
+  invitationId = (await created.json()).id;
+  await expect
+    .poll(
+      async () => {
+        const response = await page.request.get(`${organization}/mailbox`);
+        expect(response.status()).toBe(200);
+        delivery = (await response.json()).items.find(
+          (message) =>
+            message.recipient_email === 'morgan@example.test' && !previous.has(message.accept_url),
+        );
+        return Boolean(delivery);
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(true);
+  // Reload confirmed counters and activity before any workspace capture.
+  await page.reload();
+}
+const failures = [];
 try {
   await page.goto('/');
   await expect(page.getByRole('link', { name: 'Sign in to your workspace' })).toBeVisible();
   await capture('01-sign-in');
   await login(page, 'Amelia Brooks');
+  await prepareRecipientInvitation();
   await readyOverview();
   await capture('02-overview');
   await navigate('Resource library');
@@ -105,39 +148,6 @@ try {
   await capture('12-library-mobile');
   await page.setViewportSize({ width: 1440, height: 1000 });
 
-  const session = await (await page.request.get('/api/v1/me')).json();
-  headers = { 'X-CSRF-Token': session.csrf_token, Origin: baseURL };
-  const messages = await (await page.request.get(`${organization}/mailbox`)).json();
-  const previous = new Set(messages.items.map((message) => message.accept_url));
-  const created = await page.request.post(`${organization}/invitations`, {
-    headers: { ...headers, 'Idempotency-Key': randomUUID() },
-    data: {
-      email: 'morgan@example.test',
-      expires_in_hours: 24,
-      resources: [
-        {
-          project_id: '30000000-0000-4000-8000-000000000001',
-          resource_id: '40000000-0000-4000-8000-000000000001',
-        },
-      ],
-    },
-  });
-  expect(created.status()).toBe(201);
-  invitationId = (await created.json()).id;
-  let delivery;
-  await expect
-    .poll(
-      async () => {
-        const mailbox = await (await page.request.get(`${organization}/mailbox`)).json();
-        delivery = mailbox.items.find(
-          (message) =>
-            message.recipient_email === 'morgan@example.test' && !previous.has(message.accept_url),
-        );
-        return Boolean(delivery);
-      },
-      { timeout: 15_000 },
-    )
-    .toBe(true);
   const recipientContext = await browser.newContext({
     baseURL,
     viewport: { width: 1440, height: 1000 },
@@ -177,13 +187,34 @@ try {
   });
   process.stdout.write('Captured 14-migration-review.png\n');
   await reviewerContext.close();
+} catch (error) {
+  failures.push(error);
 } finally {
-  if (invitationId && headers) {
-    const revoked = await page.request.post(`${organization}/invitations/${invitationId}/revoke`, {
-      headers: { ...headers, 'Idempotency-Key': randomUUID() },
-    });
-    expect(revoked.status()).toBe(200);
+  try {
+    if (invitationId && headers) {
+      const revoked = await page.request.post(
+        `${organization}/invitations/${invitationId}/revoke`,
+        {
+          headers: { ...headers, 'Idempotency-Key': randomUUID() },
+        },
+      );
+      expect(revoked.status()).toBe(200);
+    }
+  } catch (error) {
+    failures.push(error);
+  } finally {
+    try {
+      await context.close();
+    } catch (error) {
+      failures.push(error);
+    } finally {
+      try {
+        await browser.close();
+      } catch (error) {
+        failures.push(error);
+      }
+    }
   }
-  await context.close();
-  await browser.close();
 }
+if (failures.length === 1) throw failures[0];
+if (failures.length > 1) throw new AggregateError(failures, 'Capture and cleanup failed');

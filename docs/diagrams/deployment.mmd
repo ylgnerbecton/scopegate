@@ -1,0 +1,46 @@
+flowchart TB
+    accTitle: Scopegate actual local deployment
+    accDescr: Five running services on one Docker host. One-shot initialization alone has a migration credential. Opt-in maintenance shares runtime database and recovery volumes. Local storage shares the host and does not prove host-loss durability.
+    browser[Browser on local host<br/>Workspace :5187 · OIDC :8901]
+    subgraph running[Docker Compose · five running services]
+        web[web · nginx :8080<br/>React assets and same-origin proxy]
+        api[api · Uvicorn :8457<br/>Two application worker processes<br/>Runtime database and API keys]
+        identity[identity · local OIDC :8901<br/>Process-local key and authorization codes]
+        worker[worker · Python process<br/>Runtime database and outbox key]
+        db[(database · PostgreSQL :5432<br/>Loopback :5547 · 60 connections)]
+        web -->|Service DNS resolves replacements| api
+        api -->|Runtime role · pools up to 10| db
+        worker -->|Runtime role · pool 2| db
+        api -->|Internal code exchange and JWKS| identity
+    end
+    subgraph lifecycle[Explicit lifecycle jobs]
+        initialize[initialize · one-shot bootstrap<br/>Privileged migration credential only here]
+        operations[operations · maintenance profile<br/>Separate operations key · runtime role]
+    end
+    subgraph volumes[Named volumes on the same Docker host]
+        dbvol[(database volume<br/>Recoverable primary state)]
+        idvol[(identity volume<br/>Reserved mount · fixture uses memory)]
+        journalvol[(journal volume<br/>Safe intent · outcome · restore markers)]
+        mailboxvol[(mailbox volume<br/>Protected local invitation links)]
+    end
+    browser -->|Loopback 5187 to 8080| web
+    browser -->|Public issuer and redirect| identity
+    initialize -->|Alembic · runtime privileges · idempotent seed| db
+    initialize -.->|Success required before start| api
+    initialize -.->|Success required before start| worker
+    operations -->|Reviewed CLI · pool 2| db
+    db --- dbvol
+    identity -.->|Reserved mount| idvol
+    api --- journalvol
+    operations --- journalvol
+    worker --- mailboxvol
+    api --- mailboxvol
+    operations --- mailboxvol
+    classDef runtime fill:#f0fdfa,stroke:#0f766e,color:#134e4a;
+    classDef job fill:#fff7ed,stroke:#c2410c,color:#7c2d12;
+    classDef storage fill:#eff6ff,stroke:#2563eb,color:#172554;
+    classDef authority fill:#0f172a,stroke:#0f172a,color:#ffffff;
+    class browser,web,api,identity,worker runtime;
+    class initialize,operations job;
+    class dbvol,idvol,journalvol,mailboxvol storage;
+    class db authority;

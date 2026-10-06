@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import {
   AlertCircle,
   ArrowRight,
@@ -47,6 +47,7 @@ export function Button({
   return (
     <button
       {...props}
+      type={props.type ?? 'button'}
       disabled={props.disabled || pending}
       className={`button ${className}`}
       aria-busy={pending || undefined}
@@ -117,18 +118,73 @@ export function SearchBox({
   onChange: (value: string) => void;
   placeholder?: string;
 }) {
+  const input = useRef<HTMLInputElement>(null);
+  const id = useId();
   return (
-    <label className="search-box">
-      <Search size={17} />
-      <span className="sr-only">{placeholder}</span>
+    <div className="search-box">
+      <Search size={17} aria-hidden="true" />
+      <label className="sr-only" htmlFor={id}>
+        {placeholder}
+      </label>
       <input
+        id={id}
+        ref={input}
         type="search"
         placeholder={placeholder}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
-      <kbd aria-hidden="true">⌕</kbd>
-    </label>
+      {value && (
+        <button
+          type="button"
+          className="search-clear"
+          aria-label="Clear search"
+          onClick={() => {
+            onChange('');
+            input.current?.focus();
+          }}
+        >
+          <X size={15} aria-hidden="true" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function ChoiceGroup<T extends string>({
+  label,
+  value,
+  onChange,
+  options,
+  variant = 'tabs',
+}: {
+  label: string;
+  value: T;
+  onChange: (value: T) => void;
+  options: readonly { value: T; label: string; detail?: string; icon?: ReactNode }[];
+  variant?: 'tabs' | 'compact';
+}) {
+  return (
+    <div
+      className={variant === 'tabs' ? 'library-tabs' : 'display-switch'}
+      role="group"
+      aria-label={label}
+    >
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          className={value === option.value ? 'tab-active' : ''}
+          aria-label={variant === 'compact' ? option.label : undefined}
+          aria-pressed={value === option.value}
+          onClick={() => onChange(option.value)}
+        >
+          {option.icon && <span aria-hidden="true">{option.icon}</span>}
+          {variant !== 'compact' && option.label}
+          {option.detail && <span>{option.detail}</span>}
+        </button>
+      ))}
+    </div>
   );
 }
 export function PageHeading({
@@ -167,6 +223,8 @@ export function Dialog({
   wide?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  const descriptionId = useId();
   useEffect(() => {
     const trigger = document.activeElement as HTMLElement | null;
     const node = dialog.current;
@@ -182,7 +240,8 @@ export function Dialog({
     <dialog
       ref={dialog}
       className={`dialog ${wide ? 'dialog-wide' : ''}`}
-      aria-labelledby="dialog-title"
+      aria-labelledby={titleId}
+      aria-describedby={subtitle ? descriptionId : undefined}
       onCancel={(event) => {
         event.preventDefault();
         onClose();
@@ -191,10 +250,10 @@ export function Dialog({
       <div className="dialog-heading">
         <div>
           <p className="eyebrow">Scoped change</p>
-          <h2 id="dialog-title">{title}</h2>
-          {subtitle && <p>{subtitle}</p>}
+          <h2 id={titleId}>{title}</h2>
+          {subtitle && <p id={descriptionId}>{subtitle}</p>}
         </div>
-        <button className="icon-button" onClick={onClose} aria-label="Close dialog">
+        <button type="button" className="icon-button" onClick={onClose} aria-label="Close dialog">
           <X size={20} />
         </button>
       </div>

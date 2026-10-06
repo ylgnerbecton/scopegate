@@ -63,9 +63,11 @@ function ActivityPage({ scope, filter }: { scope: Scope; filter: string }) {
       )}
       <Pagination
         page={events.page}
-        hasNext={Boolean(events.data?.next_cursor)}
+        hasNext={events.hasNext}
         next={events.next}
         previous={events.previous}
+        busy={events.isFetching}
+        label="Audit activity pages"
       />
     </section>
   );
@@ -124,12 +126,13 @@ export function AuditList({
                     className="event-details"
                     onClick={() => setExpanded(expanded === event.id ? '' : event.id)}
                     aria-expanded={expanded === event.id}
+                    aria-controls={`audit-detail-${event.id}`}
                   >
                     {expanded === event.id ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                     Change details
                   </button>
                   {expanded === event.id && (
-                    <pre className="audit-details">
+                    <pre id={`audit-detail-${event.id}`} className="audit-details">
                       {JSON.stringify(
                         {
                           actor: event.actor_key,

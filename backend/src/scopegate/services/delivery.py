@@ -15,7 +15,7 @@ from uuid import uuid4
 from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy import text
 
-from scopegate import db
+from scopegate import db, telemetry
 from scopegate.config import get_settings
 from scopegate.errors import AppError
 from scopegate.services.common import audit, receipt, require_member, save_receipt, serialize
@@ -36,6 +36,9 @@ def enqueue(conn, organization_id: str, invitation_id: str, recipient_email: str
         "subject": "Your Scopegate invitation",
         "accept_url": get_settings().public_origin.rstrip("/") + "/invitations/accept#token=" + token,
     }
+    parent = telemetry.capture()
+    if parent is not None:
+        payload["_traceparent"] = parent
     encrypted = cipher().encrypt(json.dumps(payload).encode())
     conn.execute(
         text("""
@@ -67,7 +70,8 @@ def deliver_local(message: dict, payload: dict) -> None:
     folder = _mailbox_dir()
     name = hashlib.sha256(message["delivery_key"].encode()).hexdigest() + ".enc"
     target = folder / name
-    record = {**payload, "id": str(message["id"]), "created_at": serialize(db_message_time(message))}
+    public = {key: value for key, value in payload.items() if key != "_traceparent"}
+    record = {**public, "id": str(message["id"]), "created_at": serialize(db_message_time(message))}
     encrypted = cipher().encrypt(json.dumps(record).encode())
     temporary = folder / (name + "." + secrets.token_hex(8))
     descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -88,6 +92,7 @@ def db_message_time(message: dict):
     return message["created_at"]
 
 
+@telemetry.traced("delivery.claim", "outbox")
 def claim(owner: str, limit: int = 4) -> list[dict]:
     if not owner or not 1 <= limit <= 4:
         raise ValueError("A worker owner and 1 to 4 delivery slots are required")
@@ -142,11 +147,19 @@ def _finalize_unclaimable(conn) -> None:
     )
 
 
-def current_payload(message: dict) -> dict:
+def _decrypt_payload(message: dict) -> dict:
     try:
         payload = json.loads(cipher().decrypt(bytes(message["encrypted_payload"])))
+        if not isinstance(payload, dict):
+            raise ValueError("Invalid envelope")
     except (InvalidToken, ValueError, TypeError) as exc:
         raise AppError(409, "payload_unreadable", "The delivery payload cannot be read.") from exc
+    return payload
+
+
+def current_payload(message: dict, envelope: dict | None = None) -> dict:
+    payload = dict(envelope if envelope is not None else _decrypt_payload(message))
+    payload.pop("_traceparent", None)
     raw_token = payload.get("accept_url", "").partition("#token=")[2]
     with db.transaction() as conn:
         invitation = required_row(
@@ -168,6 +181,7 @@ def current_payload(message: dict) -> dict:
     return payload
 
 
+@telemetry.traced("delivery.acknowledge", "outbox")
 def acknowledge(message: dict, error_code: str | None = None, permanent: bool = False) -> bool:
     exhausted = message["generation_attempts"] >= 8
     terminal = permanent or exhausted
@@ -200,21 +214,37 @@ def process_batch(owner: str = "local-worker", limit: int = 4, adapter=deliver_l
     counts = {"claimed": 0, "delivered": 0, "failed": 0, "stale": 0}
     for message in claim(owner, limit):
         counts["claimed"] += 1
-        try:
-            payload = current_payload(message)
-            adapter(message, payload)
-        except AppError as exc:
-            accepted = acknowledge(message, exc.code, permanent=True)
-            counts["failed" if accepted else "stale"] += 1
-        except (OSError, TimeoutError):
-            accepted = acknowledge(message, "adapter_temporarily_unavailable")
-            counts["failed" if accepted else "stale"] += 1
-        else:
-            accepted = acknowledge(message)
-            counts["delivered" if accepted else "stale"] += 1
+        counts[_process_message(message, adapter)] += 1
     purge()
     purge_mailbox()
     return counts
+
+
+def _process_message(message: dict, adapter) -> str:
+    try:
+        envelope = _decrypt_payload(message)
+    except AppError:
+        envelope = None
+    parent = telemetry.remote_context(envelope.get("_traceparent") if envelope else None)
+    with telemetry.span("delivery.attempt", "outbox", parent) as active:
+        return _deliver_attempt(message, envelope, adapter, active)
+
+
+def _deliver_attempt(message: dict, envelope: dict | None, adapter, active) -> str:
+    try:
+        payload = current_payload(message, envelope)
+        with telemetry.span("delivery.adapter", "delivery"):
+            adapter(message, payload)
+    except AppError as exc:
+        telemetry.mark_failed(active)
+        accepted = acknowledge(message, exc.code, permanent=True)
+        return "failed" if accepted else "stale"
+    except (OSError, TimeoutError):
+        telemetry.mark_failed(active)
+        accepted = acknowledge(message, "adapter_temporarily_unavailable")
+        return "failed" if accepted else "stale"
+    accepted = acknowledge(message)
+    return "delivered" if accepted else "stale"
 
 
 def mailbox(actor: dict, organization_id: str) -> dict:

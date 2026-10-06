@@ -10,20 +10,18 @@ from uuid import uuid4
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
-from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.trace import NoOpTracerProvider
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError, IntegrityError, TimeoutError
 
-from scopegate import db
+from scopegate import db, telemetry
 from scopegate.api import access, auth, catalog, invitations, migration, workspace
 from scopegate.config import get_settings
 from scopegate.dependencies import platform_actor
 from scopegate.errors import AppError
-from scopegate.observability import OperationalMiddleware, SafeFileSpanExporter, update_operational_metrics
+from scopegate.observability import OperationalMiddleware, update_operational_metrics
 
 
 @asynccontextmanager
@@ -32,6 +30,7 @@ async def lifespan(app: FastAPI):
     logging.basicConfig(level=settings.log_level)
     yield
     db.get_engine().dispose()
+    telemetry.flush()
 
 
 app = FastAPI(title="Scopegate", version="1.0.0", lifespan=lifespan, docs_url="/docs", redoc_url=None)
@@ -129,12 +128,11 @@ def metrics(principal: Annotated[dict, Depends(platform_actor)]):
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
-if not isinstance(trace.get_tracer_provider(), TracerProvider):
-    provider = TracerProvider()
-    if get_settings().otel_export_enabled:
-        provider.add_span_processor(SimpleSpanProcessor(SafeFileSpanExporter()))
-    trace.set_tracer_provider(provider)
-FastAPIInstrumentor.instrument_app(app, excluded_urls="health/live,health/ready,metrics")
+telemetry.initialize()
+FastAPIInstrumentor.instrument_app(
+    app, excluded_urls="health/live,health/ready,metrics",
+    tracer_provider=None if get_settings().otel_export_enabled else NoOpTracerProvider(),
+)
 
 generated_openapi = app.openapi
 

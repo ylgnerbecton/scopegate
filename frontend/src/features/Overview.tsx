@@ -18,6 +18,7 @@ import {
   SectionHeading,
   TextLink,
 } from '../components/ui';
+import { ResourceVisual } from '../components/ResourceVisual';
 import { read, scopedPath, type Schema, type Session } from '../lib/api';
 import { navigateWorkspace, scopeKey, type Scope } from '../lib/workspace';
 import { AuditList } from './Activity';
@@ -139,6 +140,7 @@ export function Overview({ scope, session, organization, project, isManager }: O
           value={resources.data?.items.length}
           icon={<BookOpen size={20} />}
           detail="Explicitly granted in this project"
+          boundary={resources.data?.next_cursor ? 'First page of granted resources' : undefined}
           pending={resources.isPending}
           error={resources.error}
           onClick={() => go('resources')}
@@ -149,6 +151,9 @@ export function Overview({ scope, session, organization, project, isManager }: O
             value={members.data?.items.filter((item) => item.status === 'active').length}
             icon={<Users size={20} />}
             detail="Within this organization"
+            boundary={
+              members.data?.next_cursor ? 'Counted within the first membership page' : undefined
+            }
             pending={members.isPending}
             error={members.error}
             onClick={() => go('members')}
@@ -160,6 +165,9 @@ export function Overview({ scope, session, organization, project, isManager }: O
             value={invitations.data?.items.filter((item) => item.state === 'pending').length}
             icon={<Mail size={20} />}
             detail="Waiting for verified acceptance"
+            boundary={
+              invitations.data?.next_cursor ? 'Counted within the first invitation page' : undefined
+            }
             pending={invitations.isPending}
             error={invitations.error}
             onClick={() => go('invitations')}
@@ -179,15 +187,13 @@ export function Overview({ scope, session, organization, project, isManager }: O
             <ErrorPanel error={resources.error} retry={() => void resources.refetch()} />
           ) : resources.data?.items.length ? (
             <div className="resource-preview-grid">
-              {resources.data.items.slice(0, 3).map((resource, index) => (
+              {resources.data.items.slice(0, 3).map((resource) => (
                 <button
                   className="resource-preview"
                   key={resource.id}
                   onClick={() => go('resources')}
                 >
-                  <span className={`resource-art resource-art-${index % 4}`}>
-                    <ResourceGlyph variant={index} />
-                  </span>
+                  <ResourceVisual className="resource-art" resourceKey={resource.external_key} />
                   <span className="preview-content">
                     <small>{resource.tags?.[0] ?? 'Resource'}</small>
                     <strong>{resource.title ?? resource.external_key}</strong>
@@ -272,6 +278,7 @@ function Stat({
   pending,
   error,
   onClick,
+  boundary,
 }: {
   title: string;
   value?: number;
@@ -280,6 +287,7 @@ function Stat({
   pending: boolean;
   error: unknown;
   onClick: () => void;
+  boundary?: string;
 }) {
   return (
     <button className="stat-card" onClick={onClick}>
@@ -288,50 +296,13 @@ function Stat({
         {icon}
       </span>
       <strong>{pending ? '—' : error ? 'Unavailable' : (value ?? 0)}</strong>
+      {!pending && !error && boundary && (
+        <span className="stat-boundary">{boundary} · More available</span>
+      )}
       <span className="stat-detail">
         {detail}
         <ArrowUpRight size={14} />
       </span>
     </button>
-  );
-}
-
-function ResourceGlyph({ variant }: { variant: number }) {
-  return (
-    <svg viewBox="0 0 180 110" aria-hidden="true">
-      <g fill="none" stroke="currentColor" strokeWidth="1.3">
-        {variant % 3 === 0 ? (
-          <>
-            <ellipse cx="90" cy="55" rx="38" ry="38" />
-            <ellipse cx="90" cy="55" rx="58" ry="20" transform="rotate(-35 90 55)" />
-            <ellipse cx="90" cy="55" rx="58" ry="20" transform="rotate(35 90 55)" />
-            <circle cx="90" cy="55" r="7" fill="currentColor" />
-          </>
-        ) : variant % 3 === 1 ? (
-          <>
-            {[0, 1, 2, 3, 4].map((value) => (
-              <path
-                key={value}
-                d={`M${42 + value * 13} 78 ${75 + value * 13} 27 ${108 + value * 7} 78Z`}
-              />
-            ))}
-          </>
-        ) : (
-          <>
-            {[0, 1, 2, 3].map((value) => (
-              <rect
-                key={value}
-                x={45 + value * 10}
-                y={18 + value * 8}
-                width="64"
-                height="64"
-                rx="5"
-                transform="rotate(-12 90 55)"
-              />
-            ))}
-          </>
-        )}
-      </g>
-    </svg>
   );
 }

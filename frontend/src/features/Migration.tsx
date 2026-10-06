@@ -238,9 +238,11 @@ function MigrationLedger({
       )}
       <Pagination
         page={items.page}
-        hasNext={Boolean(items.data?.next_cursor)}
+        hasNext={items.hasNext}
         next={items.next}
         previous={items.previous}
+        busy={items.isFetching}
+        label="Reconciliation ledger pages"
       />
       {selected && (
         <LedgerResolution

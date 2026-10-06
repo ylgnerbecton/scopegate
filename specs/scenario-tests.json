@@ -7,7 +7,8 @@
         "G-MIGRATION"
       ],
       "tests": [
-        "backend/tests/test_diagnosis.py::test_null_organization_metadata_has_bounded_safe_defaults"
+        "backend/tests/test_diagnosis.py::test_null_organization_metadata_has_bounded_safe_defaults",
+        "backend/tests/test_diagnosis.py::test_absent_organization_is_not_found_without_mutating_existing_metadata"
       ],
       "documents": [
         "docs/DIAGNOSIS.md",

@@ -2,7 +2,7 @@
 
 Scopegate's domain separates identity, organization authority, catalog publication and individual resource use. This design defines the responsibilities and transaction boundaries of the local implementation. The [schema](../specs/contracts/schema.sql), [HTTP contract](../specs/contracts/openapi.json) and [local operations contract](../specs/contracts/local-operations.json) define its persistence and interfaces. The [implementation map](IMPLEMENTATION_MAP.md) identifies the actual source; examples below illustrate responsibilities rather than a literal source layout. The [live CLI blueprint](../specs/contracts/migration-cli.json) retains future private integration requirements.
 
-Status: local implementation design with illustrative examples. The continuity and irreversible revocation assumptions in [ADR 6](adr/0006-manager-continuity-and-entitlement-revocation.md) require Product and Operations validation against the private baseline before a real organization cutover.
+Status: implemented local boundaries and protocols. The continuity and irreversible revocation assumptions in [ADR 6](adr/0006-manager-continuity-and-entitlement-revocation.md) require Product and Operations validation against the private baseline before a real organization cutover.
 
 ## Bounded contexts and dependency rules
 
@@ -17,9 +17,9 @@ Status: local implementation design with illustrative examples. The continuity a
 | Migration | Source disposition, reviewed mapping, decision evidence and writer ownership | Explicit ports into the preceding contexts; private evidence repository |
 | Audit and delivery | Safe command evidence and postcommit delivery | Caller owned transaction and delivery adapter |
 
-Domain code imports standard types and domain value objects. Application services import domain rules and narrow ports. SQLAlchemy, FastAPI and provider SDKs belong to adapters. A composition root constructs concrete adapters and injects them explicitly. HTTP handlers cannot import another module's table and bypass its use case. Migration applies reviewed changes through the same mutation invariants, rather than a permissive backfill repository.
+The pure domain predicate imports standard types and immutable access facts. FastAPI transport imports application services; services coordinate domain rules, parameterized SQLAlchemy Core statements and narrow integration functions. `main.py` composes routers, dependencies, operational middleware and safe errors. The implementation keeps fewer modules than a full per-context domain/application/adapter hierarchy: that hierarchy is unnecessary for this closed scope. HTTP handlers delegate to the owning use case rather than issuing cross-context writes. Migration applies reviewed changes through the same mutation invariants, rather than a permissive backfill repository.
 
-Read selectors may join across contexts to produce a bounded authorized projection. They expose DTOs, not ORM objects or lazy relationships. Write repositories are named for their domain purpose and preserve the ownership boundary. The schema provides composite integrity; the policy provides time, status and operation authority. Neither layer substitutes for the other.
+Read selectors may join across contexts to produce a bounded authorized projection. They return serialized dictionaries matching the HTTP contract, not ORM objects or lazy relationships. Scoped write helpers preserve the owning service's boundary and never commit independently. The schema provides composite integrity; the policy provides time, status and operation authority. Neither layer substitutes for the other.
 
 ## Stable identifiers and naming authority
 
@@ -94,133 +94,55 @@ Customer managers cannot assign roles, membership kind, staff expiry or migratio
 
 A target organization retains at least one active nonexpiring customer access manager. Staff managers cannot satisfy this continuity rule. Two currently valid staff managers could both expire without a command, so counting currently active managers alone is insufficient. Emergency platform repair is an audited management operation, not a consumption bypass.
 
-## Proposed component layout
+## Implemented component layout
 
-```text
-backend/src/scopegate/
-  bootstrap.py                         explicit application composition
-  identity/{domain,application,adapters}/
-  organizations/{domain,application,adapters}/
-  access/domain/{commands,policy,state}.py
-  access/application/{grant_service,ports,selectors}.py
-  access/adapters/{postgres,http}.py
-  invitations/{domain,application,adapters}/
-  catalog/{domain,application,adapters}/
-  reports/{domain,application,adapters}/
-  migration/{application,adapters}/
-  audit/{application,adapters}/
-  delivery/{application,adapters}/
-frontend/src/
-  app/{router,SessionBoundary,WorkspaceShell}.tsx
-  features/resources/{ResourceLibrary,ResourceCard,ReportConfigPanel}.tsx
-  features/members/{MemberList,MemberDetail,GrantEditor,GrantDiffReview}.tsx
-  features/invitations/{InvitationList,InvitationForm,InvitationAcceptance}.tsx
-  features/audit/AuditFeed.tsx
-  features/migration/{MigrationWorkbench,LedgerTable,DecisionForm}.tsx
-  shared/api/{client.ts,generated/}
-  shared/{queryKeys.ts,ui/}
-```
+![Implemented transport, service, policy and integration boundaries](diagrams/components.svg)
 
-This is an illustrative dependency layout, not generated source. A small context can use fewer files until responsibilities need separation. Module import checks must prevent domain to adapter imports and cross context write access.
+[Editable source](diagrams/components.mmd) · [Deployment and trust boundaries](ARCHITECTURE.md#actual-local-deployment)
 
-| Component or port | Responsibility and contract |
-| --- | --- |
-| `AccessPolicy` | Pure operation predicates over immutable facts and an explicit decision time; shared by commands and protected consuming adapters |
-| `AuthorizationSelector` | Primary database projection of scoped facts; query predicate and policy parity tested against the same truth table |
-| `AuthorizationLocks` | Ordered resource, organization, membership and invitation locks; it does not decide permission |
-| `MembershipRepository`, `GrantRepository` | Scoped domain state reads and writes; no generic entity repository and no implicit commit |
-| `CommandReceiptRepository`, `CatalogReceiptRepository` | Canonical fingerprint matching and minimal response replay within the supported window |
-| `IdentityProvider` | Code exchange and validated claims from the configured issuer; environment permitted adapters must preserve the same trust contract |
-| `SourceAdapter` | Private baseline facts with provenance and explicit unresolved records; no inferred identity assignment |
-| `DeliveryAdapter` | One bounded provider attempt with a stable delivery key; reports accepted, rejected or unknown outcome |
-| `EnforcementAdapter` | Existing computation boundary that carries the authenticated actor and scope, then checks current access for protected output |
-| `WorkspaceShell` and feature routes | Organization and project scope, authorized navigation and query lifecycle; they cannot grant authority |
+| Component | Actual source | Responsibility and dependency limit |
+| --- | --- | --- |
+| Composition and transport | [main.py](../backend/src/scopegate/main.py), [api/](../backend/src/scopegate/api) | Bind validated input, resolve the actor and delegate; central safe errors and HTTP probes |
+| Identity boundary | [dependencies.py](../backend/src/scopegate/dependencies.py), [identity.py](../backend/src/scopegate/services/identity.py) | Verify the configured provider, immutable identity and opaque session; separate browser/platform/Publisher authority |
+| Organization authority | [workspace.py](../backend/src/scopegate/services/workspace.py), [invariants.py](../backend/src/scopegate/services/invariants.py), [entitlements.py](../backend/src/scopegate/services/entitlements.py) | Scope projects and memberships, preserve manager continuity and apply reviewed destructive entitlement transitions |
+| Individual access and output | [access.py](../backend/src/scopegate/services/access.py), [domain/policy.py](../backend/src/scopegate/domain/policy.py) | Versioned scoped delta and report references; pure access predicate over current facts |
+| Catalog projection and publication | [catalog.py](../backend/src/scopegate/services/catalog.py) | Scoped localized search and distinct machine publication; no customer grant assignment |
+| Enrollment | [enrollment.py](../backend/src/scopegate/services/enrollment.py) | Single-use recipient-bound acceptance and exact reviewed resource plan |
+| Transaction primitives | [db.py](../backend/src/scopegate/db.py) | One READ COMMITTED connection, ordered resource/organization locks and bounded timeouts |
+| Shared command semantics | [common.py](../backend/src/scopegate/services/common.py) | Scoped authority, receipts, audit, signed cursors and journal orchestration; caller owns commit |
+| Delivery boundary | [delivery.py](../backend/src/scopegate/services/delivery.py), [worker.py](../backend/src/scopegate/worker.py) | Encrypted outbox, durable claims, explicit adapter argument, lease finalization and retention |
+| Migration and recovery | [migration.py](../backend/src/scopegate/services/migration.py), [recovery.py](../backend/src/scopegate/services/recovery.py), [journal.py](../backend/src/scopegate/journal.py), [cli.py](../backend/src/scopegate/cli.py) | Explicit mappings and ownership epoch; independent intent and restore fences; web review has no cutover authority |
+| Causal diagnostic context | [telemetry.py](../backend/src/scopegate/telemetry.py), [observability.py](../backend/src/scopegate/observability.py) | Fixed operation/dependency spans and safe asynchronous export; encrypted outbox carries validated trace context without authority |
+| Web composition | [App.tsx](../frontend/src/App.tsx), [features/](../frontend/src/features) | Session and selected scope, composed feature panels and temporary drafts |
+| Web shared boundaries | [api.ts](../frontend/src/lib/api.ts), [queries.ts](../frontend/src/lib/queries.ts), [generated types](../frontend/src/generated/api.d.ts), [ui.tsx](../frontend/src/components/ui.tsx) | One typed transport, principal/organization/project keys and reusable accessible controls |
 
-The frontend route tree composes `SessionBoundary` → `WorkspaceShell` → one feature page. `MemberDetail` opens `GrantEditor`, whose reviewed draft passes through `GrantDiffReview` before mutation. `InvitationAcceptance` has a recipient session boundary and authenticated preview before the acceptance command; it does not require preexisting organization membership. `MigrationWorkbench` composes paged ledger and decision panels only for the scoped reviewer capability. Shared UI contains accessible controls and loading/error presentation; feature rules remain in their feature and server contract. TanStack Query owns remote state, while each page owns its temporary draft. Query keys contain principal, organization and project where applicable; switching scope cancels old requests, resets drafts and invalidates departed data under the [workflow contract](UX.md#navigation-and-scope).
+Services use explicit functions with a transaction context rather than invented repository interfaces or a custom dependency injection container. New provider behavior belongs behind the existing integration boundary; changing authorization semantics still requires a policy/contract decision. The [implementation map](IMPLEMENTATION_MAP.md) owns the full inventory.
 
-## Explicit service and unit of work example
+### UI component ownership
 
-The following Python illustrates control flow. Domain types and repository interfaces are intentionally named for access operations; implementation must provide their concrete methods and tests. `database_time` comes from the database after lock acquisition, and `snapshot` runs as a new statement. No provider or delivery call occurs inside this transaction.
+TanStack Query owns remote state. A feature owns its input draft, selected resource set and review step; reusable controls own semantics, focus and visual state. Feature components receive explicit scope and capability rather than reading an implicit global tenant. Confirmed server responses update the cache; a failed or stale command preserves its draft and requires another review. Query keys include the principal and organization/project dimensions used by the endpoint.
 
-```python
-from __future__ import annotations
+Organization switching cancels old scoped work and clears departed selection and drafts; account change clears server state. A delayed result may populate its old key but cannot render under the new scope. Recipient acceptance uses an authenticated preview without requiring preexisting organization membership. Migration review exposes only scoped evidence and reviewer actions. See [UX](UX.md#navigation-and-scope) for the product interaction contract.
 
-from collections.abc import Callable
-from types import TracebackType
-from typing import Protocol, Self
+## Implemented transaction and retry flow
 
-class AccessUnitOfWork(Protocol):
-    locks: AuthorizationLocks
-    memberships: MembershipRepository
-    grants: GrantRepository
-    entitlements: EntitlementRepository
-    sessions: SessionRepository
-    authorization: AuthorizationSelector
-    receipts: CommandReceiptRepository
-    audit: AuditRepository
+The exact grant command is [access.apply_diff](../backend/src/scopegate/services/access.py). Its shared helpers are [db.py](../backend/src/scopegate/db.py) and [common.py](../backend/src/scopegate/services/common.py); the [revocation diagram](diagrams/grant-revocation.svg) shows the ordering against protected use.
 
-    def __enter__(self) -> Self: ...
-    def __exit__(self, exc_type: type[BaseException] | None,
-                 exc: BaseException | None,
-                 traceback: TracebackType | None) -> None: ...
-    def database_time(self) -> DecisionTime: ...
-    def commit(self) -> None: ...
+1. The HTTP adapter validates UUIDs, bounds, CSRF and headers; the use case rejects duplicated or overlapping addition/removal input. The journal wrapper binds actor, organization, operation, key and canonical payload, then prepares independent intent before domain locks.
+2. A separate scoped visibility preflight conceals foreign resource identifiers. It is not reused as an authoritative grant decision.
+3. A new bounded transaction locks affected resource rows in UUID order, then the exclusive organization advisory lock. Fresh statements recheck current scoped manager authority after waits.
+4. A command-key advisory mutex serializes the exact receipt scope. A matching unexpired receipt returns the recorded result; a mismatched fingerprint fails. Replay cannot reapply an earlier addition after a later revoke.
+5. For a new command, enforce the writer/restore fence, resolve the scoped project and entitlement pairs, lock the target membership and validate its expected version. Additions require active membership/project/entitlement and published resources; removals can revoke historical archived or disabled associations.
+6. Apply the scoped delta, advance a changed membership's version once, append audit and save the response receipt on the same connection. Exiting `db.transaction()` commits only a successful body and rolls back exceptions; helpers never commit independently.
+7. After the transaction connection is released, append the journal outcome. An outcome failure may follow a successful commit and returns uncertainty. Retry the same key/payload under current authority; do not invent a replacement key.
 
-class GrantService:
-    def __init__(
-        self,
-        unit_of_work: Callable[[], AccessUnitOfWork],
-        policy: AccessPolicy,
-    ) -> None:
-        self.unit_of_work = unit_of_work
-        self.policy = policy
+Invitation acceptance locks its existing membership and invitation before receipt matching, so a matching receipt still requires current recent verified recipient binding. Protected report creation uses shared organization authority and reauthorizes resources even when returning its receipt. Catalog publication uses its own external-key mutex and `catalog_receipts`; it never uses a tenant access credential. These are deliberate differences, not candidates for a universal CRUD command wrapper.
 
-    def apply(self, actor: SessionPrincipal, command: GrantDiff,
-              prepared: PreparedIntent | None) -> GrantDelta:
-        command.validate_shape()  # Disjoint sets and at most 100 in each.
-        command.require_journal_binding(prepared)  # Mandatory for live journal-required commands.
-        journal_reference = prepared.reference if prepared is not None else None
-        with self.unit_of_work() as work:
-            work.locks.resources_shared(sorted(command.resource_ids))
-            work.locks.organization_exclusive(command.organization_id)
-            member = work.memberships.lock_scoped(command.target)
-            at = work.database_time()
-            principal = work.sessions.require_current(actor, at)
-            snapshot = work.authorization.snapshot(principal, command.scope, at)
-            self.policy.require_manage(snapshot)
+## Independent journal around the transaction core
 
-            prior = work.receipts.match(command.receipt_scope(principal),
-                                        command.fingerprint)
-            if prior is not None:
-                return prior.result  # No new state transition or commit.
+The implemented `journaled` wrapper prepares outside the transaction, passes its server-created reference through context-local state, and records that reference on audit and receipt. The local adapter persists a safe intent and outcome with file locking and fsync outside the recovered database. Client input cannot supply the trusted journal binding. Preparation failure denies the command with no domain effect; postcommit outcome failure is observable uncertainty rather than rollback.
 
-            member.require_version(command.expected_version)
-            additions = work.entitlements.snapshot_scoped(command.scope, command.add)
-            removals = work.grants.snapshot_scoped(command.scope, command.remove)
-            self.policy.require_grant_additions(snapshot, additions, at)
-            self.policy.require_grant_removals(snapshot, removals)
-            changes = work.grants.apply_delta(command.target,
-                                              command.add, command.remove)
-            if changes:
-                member.advance_access_version()
-                work.memberships.save(member)
-                work.audit.append_grant_change(principal, command, changes, at,
-                                              journal_reference=journal_reference)
-            result = GrantDelta(member.access_version, changes)
-            work.receipts.record(command.receipt_scope(principal),
-                                 command.fingerprint, result,
-                                 journal_reference=journal_reference)
-            work.commit()
-            return result
-```
-
-The unit of work defaults to rollback on exit unless explicitly committed. Repositories do not commit or perform external work. They return scoped facts for the pure policy rather than defining independent allow rules. The membership save explicitly persists its domain version. Session validation here is a read; idle touches finish in the request boundary transaction before domain locks. Receipt matching rejects a reused key with a different fingerprint; expected version is checked only for a new command. Current authority is checked before returning a prior result. The service returns the changed delta, never a full grant inventory.
-
-## Live journal wrapper around the transaction core
-
-The illustrated GrantService is the locked transaction core. Its application orchestrator validates current request identity and shape, calls the durable journal prepare port outside any database transaction, and passes a server-created PreparedIntent bound to actor, scope, operation, idempotency key and request fingerprint. Client input cannot supply that proof. Live configuration requires this prepared reference; the local synthetic adapter follows the same flow independently of the recovered database.
-
-After the core returns and its connection is released, the orchestrator appends the outcome with the receipt and committed audit references. Audit and receipt persist the same journal_reference. Preparation failure rejects the mutation with 503 and no effect. Outcome failure after commit is observable uncertainty; it cannot be presented as rollback or trigger a new-key retry. The durable prepared record supports reconciliation. No journal or provider I/O occurs while resource or organization locks are held. The prepare port deduplicates the bound command key; conflicting fingerprints fail, and repeated matching outcomes remain harmless. Delivery system defines the recovery and live approval requirements.
+The journal is evidence for recovery, not a permission store. Current authorization remains in the primary database. Restoring that database requires an independent marker and reconciliation before access reopens; unresolved prepared intent stays fenced. The local volume survives a database restore but shares its host, so independently durable live recovery requires a separate adapter and operational proof. [Delivery system](DELIVERY_SYSTEM.md) owns those limits and failure cases.
 
 ## Authorized selector example
 
@@ -253,14 +175,14 @@ LIMIT :limit_plus_one;
 
 | Pattern or principle | Application and limit |
 | --- | --- |
-| SRP and cohesion | Handler parses, service coordinates, policy decides, repository persists and adapter integrates |
-| Dependency inversion and injection | Constructor injected provider, persistence and delivery ports; no service locator or custom injection framework |
-| Interface segregation and substitution | Narrow ports reflect a caller's actual needs; adapters preserve expiry, failure and scope semantics instead of broadening permission for convenience |
-| Open/closed principle | A real provider or source variation is added behind its port; changing access semantics requires a reviewed policy and contract change |
-| Service layer, command and unit of work | Immutable intent, one transaction owner and reproducible retry scope |
-| Domain repository and selector | Domain write operations; bounded DTO reads; no universal CRUD repository |
+| SRP and cohesion | Handler parses, service coordinates, policy decides, scoped SQL helpers persist and adapter functions integrate |
+| Dependency boundaries and injection | Explicit provider/configuration boundaries and a delivery adapter function argument; no service locator or custom injection framework |
+| Narrow integration contracts | Identity, delivery and journal functions preserve their caller's expiry, failure and scope semantics; a live adapter must prove that contract before it replaces the local one |
+| Controlled extension | Provider/source variations belong at their integration boundary; changing access semantics requires a reviewed policy and contract change |
+| Service layer and transaction context | Validated explicit intent, one `db.transaction()` owner and reproducible receipt/retry scope |
+| Scoped SQL helpers and selectors | Named write operations and bounded serialized reads through SQLAlchemy Core; no ORM repository hierarchy or universal CRUD layer |
 | Adapter and strategy | Provider, delivery and verified source variations with a real contract; no pluggable authorization strategy that silently changes policy |
-| Factory | Composition root selects an environment permitted adapter; production validation precedes construction |
+| Composition and configuration | Startup validates component credentials and budgets; unimplemented live adapters cause production refusal |
 | Specification and state machine | Named policy predicates and explicit legal transitions; no dynamic query language or state machine framework |
 | Decorator and facade | Cross cutting request correlation and typed HTTP client; no authorization decorator as the only enforcement |
 | Observer, builder and template method | Deferred; the durable outbox covers the actual delivery need, ordinary constructors and explicit functions remain sufficient |
@@ -268,23 +190,17 @@ LIMIT :limit_plus_one;
 
 Maintainability checks assess branching, nesting, duplicated policy and cross module imports. Splitting a function solely to improve a metric cannot remove an invariant or hide the transaction owner. The [decision matrix](DECISION_MATRIX.md) records alternative designs and the evidence needed to revisit them.
 
-## Implementation artifacts by task
+## Contracts, source and evidence ownership
 
-This table preserves the original task blueprint and conceptual paths. The implemented source layout is in [Implementation map](IMPLEMENTATION_MAP.md); the paths below are illustrative and are not a second inventory of delivered files. The [execution graph](../specs/execution.json) owns prerequisites and completion evidence. The local product uses committed uv and npm lockfiles for reproducible installation.
-
-| Task | Code and artifact paths | Boundary to prove |
+| Change | Update together | Required evidence |
 | --- | --- | --- |
-| T01 Foundation | `backend/pyproject.toml`, backend dependency lockfile, `backend/src/scopegate/bootstrap.py`, `frontend/package.json`, frontend dependency lockfile, `compose.yaml`, runtime Make targets and CI workflow | Environment validation, thin API startup, generated client pipeline and reproducible builds |
-| T02 Persistence | `backend/alembic/versions/`, context `adapters/postgres.py`, `backend/tests/integration/test_tenant_constraints.py`, `backend/tests/fixtures/target/` | Canonical DDL equivalence, domain scoped repositories and direct structural rejection |
-| T03 Identity and provisioning | `identity/application/login_service.py`, `identity/adapters/oidc.py`, `identity/adapters/session_store.py`, `organizations/application/provisioning_service.py` | Verified issuer and subject, trusted session claims, logout and durable first manager |
-| T04 Catalog and entitlement | `catalog/application/publish_service.py`, `catalog/adapters/http.py`, `organizations/application/entitlement_service.py` | Publisher receipt and version, terminal archive, reviewed bounded disable and no revival |
-| T05 Access | `access/domain/policy.py`, `access/domain/commands.py`, `access/application/grant_service.py`, `access/application/ports.py`, `access/adapters/postgres.py` | One pure policy, constructor injection, access version, scoped delta and ordered transaction |
-| T06 Enrollment and delivery | `invitations/application/enrollment_service.py`, `invitations/adapters/http.py`, `delivery/application/worker.py`, `delivery/adapters/` | Recipient proof, receipt before pending check, one acceptance and durable delivery lease |
-| T07 Resource and report reads | `access/application/resource_selector.py`, `reports/application/report_service.py`, `reports/adapters/enforcement.py` | Bounded authorized projections and current authorization at each consuming boundary |
-| T08 Migration | `migration/application/{profile,backfill,compare,ownership}.py`, `migration/adapters/cli.py`, `migration/adapters/http.py`, `backend/tests/fixtures/legacy/` | Private source port, reviewed mappings, replay ledger, epoch fence and scoped review |
-| T09 Web workspace | `frontend/src/features/`, `frontend/src/shared/api/generated/`, `frontend/src/shared/queryKeys.ts`, `frontend/src/app/session.ts` | Generated OpenAPI types, tenant state reset, confirmed mutations and accessible workflows |
-| T10 Integrated gates | `backend/tests/{unit,integration,contracts,security}/`, `frontend/tests/`, browser suite and runtime gate workflow | Real database schedules, fault injection, endpoint concealment and provider integration evidence |
-| T11 Local demonstration | Synthetic seed command, complete local journey script, synthetic restore and rollback evidence | Several organizations, no implicit grants, deterministic delivery and truthful adapter labeling |
-| T12 Public packaging | Setup commands, screenshots from synthetic data, accurate README and `docs/VALIDATION.md` evidence | Complete local product evidence without claiming private integrations or live cutover |
+| Permission or state transition | Owning service, pure predicate, independent policy cases and feature acceptance | Domain, real database races and endpoint concealment |
+| Persistence relationship | Canonical SQL, Alembic migration, model description and ER source/export | Disposable structural constraints plus actual runtime transitions |
+| HTTP request or response | Independent OpenAPI, adapter, generated frontend types and calling feature | Contract drift and actual response validation |
+| UI interaction or shared control | Owning feature, shared semantics, UX contract and real capture where visible | Types/build and affected keyboard/browser journeys |
+| Delivery, journal or writer authority | Owning service/adapter, local operations contract and operating procedure | Crash/retry/fence/recovery rehearsal against actual adapters |
+| Release tooling | Execution graph, named scenario mapping and evidence collector | Current revision, real exit codes, artifact digests and offline archive verification |
 
-Client types are generated from the committed OpenAPI contract and checked against the application's generated OpenAPI. Handwritten API DTO duplicates cannot drift from that generation. Fixtures have deterministic identities and clocks, intentionally conflicting relationships and explicit expected outcomes. Use fixed barriers for concurrency scenarios instead of brittle timing sleeps. T13 and T14 retain their additional private integration, baseline, approval and real rollout gates; local packaging cannot satisfy them.
+The [implementation map](IMPLEMENTATION_MAP.md) identifies source; [execution graph](../specs/execution.json) owns task prerequisites; [scenario mapping](../specs/scenario-tests.json) binds behavior to named tests. There is no second illustrative implementation tree to reconcile. Client types are generated from committed OpenAPI and checked against the application surface. Tests use independent connections, explicit barriers and deterministic synthetic identities rather than timing assumptions or copied expected metadata.
+
+T00–T12 deliver the local product and public package. T13–T14 retain private baseline, provider/host integration, approval and real cohort gates; local proof cannot satisfy those live requirements.

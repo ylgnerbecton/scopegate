@@ -25,6 +25,10 @@ The initial deployment stays within the existing hosting environment after disco
 
 Thresholds are starting proposals. Set the final availability and latency objectives after measuring traffic and aligning business impact. User, email, organization, project, and resource identifiers are not metric labels. Keep sensitive event details in access-controlled logs, with correlation IDs and a documented retention period.
 
+Local HTTP logs include a trace ID alongside the correlation ID when tracing is enabled. Private `traces/spans.jsonl` diagnostics link HTTP, journaled commands, PostgreSQL transactions, OIDC boundaries and worker delivery using `trace_id`, `span_id` and `parent_span_id`. Operation/dependency names are fixed; arguments, identities, SQL, provider URLs, secrets, exception details and events are excluded. API and worker files are separate process/container diagnostics; central collection and durable host retention require the live telemetry integration.
+
+The encrypted invitation outbox carries only validated W3C `traceparent` metadata, removed before adapters and mailbox output. It cannot authorize a recipient, change a receipt fingerprint or affect lease ownership. Legacy messages without context remain deliverable. `SCOPEGATE_OTEL_EXPORT_ENABLED=false` before startup disables local named spans and context capture. The enabled provider uses a bounded asynchronous export queue; a full queue or export failure can lose diagnostics and produces a safe telemetry failure stage without changing the command or delivery result. Reconcile uncertain business outcomes through receipts and audit, even when telemetry is missing. [Tracing regressions](../backend/tests/test_tracing.py) exercise failed causal journeys and these independent failure boundaries.
+
 ## Incident sequence
 
 1. Identify the failing path, deployment, organization scope, and last command correlation IDs. Preserve evidence before retrying mutations.

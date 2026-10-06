@@ -11,7 +11,7 @@
   font-size: 14px;
   line-height: 1.5;
   --forest: #172d23;
-  --muted: #748077;
+  --muted: #63705c;
   --line: #e3e7de;
   --lime: #d7efa9;
 }
@@ -817,7 +817,7 @@ code {
 }
 .map-node small {
   font-size: 8px;
-  color: #8b9b7b;
+  color: #59664e;
 }
 .map-check {
   grid-column: 3;
@@ -891,7 +891,7 @@ code {
   justify-content: space-between;
   align-items: center;
   font-size: 10px;
-  color: #78836f;
+  color: #59664e;
 }
 .stat-top svg {
   color: #8eab73;
@@ -910,10 +910,16 @@ code {
   align-items: center;
   justify-content: space-between;
   font-size: 9px;
-  color: #98a28d;
+  color: #59664e;
 }
 .stat-detail svg {
   color: #96a783;
+}
+.stat-boundary {
+  color: #59664e;
+  font-size: 10px;
+  line-height: 1.6;
+  padding-bottom: 7px;
 }
 .overview-bottom {
   display: grid;
@@ -971,7 +977,7 @@ code {
   padding: 14px 12px;
 }
 .preview-content > small {
-  color: #8a967c;
+  color: #59664e;
   font-size: 8px;
   text-transform: uppercase;
   letter-spacing: 0.65px;
@@ -990,7 +996,7 @@ code {
   justify-content: space-between;
   align-items: center;
   font-size: 8px;
-  color: #99a78a;
+  color: #59664e;
   margin-top: 13px;
 }
 .boundary-panel {
@@ -1011,7 +1017,7 @@ code {
 }
 .boundary-panel .eyebrow {
   font-size: 8px;
-  color: #85936f;
+  color: #59664e;
   letter-spacing: 1.1px;
 }
 .boundary-panel h2 {
@@ -1023,7 +1029,7 @@ code {
 .boundary-panel > p:not(.eyebrow) {
   font-size: 10px;
   line-height: 1.75;
-  color: #8a957a;
+  color: #59664e;
 }
 .boundary-panel ul {
   list-style: none;
@@ -1033,7 +1039,7 @@ code {
   flex-direction: column;
   gap: 7px;
   font-size: 9px;
-  color: #6c7e55;
+  color: #59664e;
 }
 .boundary-panel li {
   display: flex;
@@ -1045,7 +1051,7 @@ code {
   margin-top: 13px;
   border-top: 1px solid #dce4cf;
   padding-top: 10px;
-  color: #758667;
+  color: #59664e;
 }
 .collection-empty {
   padding: 35px 20px 45px;
@@ -1059,7 +1065,7 @@ code {
 }
 .collection-empty p {
   font-size: 10px;
-  color: #92a083;
+  color: #59664e;
 }
 .activity-preview .section-heading {
   padding-bottom: 9px;
@@ -1110,11 +1116,11 @@ code {
 }
 .audit-body > p {
   font-size: 10px;
-  color: #98a18d;
+  color: #59664e;
   margin-top: 4px;
 }
 .audit-actor {
-  color: #7e8c74;
+  color: #59664e;
 }
 .middle-dot {
   margin: 0 6px;
@@ -1122,7 +1128,7 @@ code {
 }
 .audit-event time {
   font-size: 9px;
-  color: #9da593;
+  color: #59664e;
   padding-top: 6px;
   white-space: nowrap;
 }
@@ -1133,7 +1139,7 @@ code {
   display: flex;
   align-items: center;
   gap: 3px;
-  color: #7d906c;
+  color: #59664e;
   border: 0;
   background: none;
   font-size: 9px;
@@ -1165,7 +1171,7 @@ code {
   align-items: center;
   gap: 9px;
   font-size: 12px;
-  color: #7b8c6d;
+  color: #59664e;
 }
 .search-box {
   display: flex;
@@ -1177,7 +1183,7 @@ code {
   padding: 0 12px;
   width: 375px;
   max-width: 100%;
-  height: 43px;
+  min-height: 44px;
   color: #59664e;
 }
 .search-box:focus-within {
@@ -1192,12 +1198,32 @@ code {
   min-width: 0;
   font-size: 11px;
 }
-.search-box input::placeholder {
-  color: #9ca78f;
+.search-box input:focus-visible {
+  outline: 2px solid #446c33;
+  outline-offset: 3px;
+  border-radius: 3px;
 }
-.search-box kbd {
-  font-size: 14px;
-  color: #b8c2a8;
+.search-box input::placeholder {
+  color: var(--muted);
+}
+.search-box input::-webkit-search-cancel-button {
+  appearance: none;
+}
+.search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 6px;
+  margin-right: -10px;
+  background: none;
+  color: #59664e;
+}
+.search-clear:hover {
+  background: #f0f4eb;
 }
 .filter-select {
   display: inline-flex;
@@ -1227,8 +1253,8 @@ code {
   border-radius: 6px;
 }
 .display-switch button {
-  height: 30px;
-  width: 31px;
+  height: 44px;
+  width: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1236,6 +1262,9 @@ code {
   border: 0;
   color: #9ea98b;
   border-radius: 4px;
+}
+.display-switch button > span {
+  display: flex;
 }
 .display-switch button[aria-pressed='true'] {
   color: #6f8658;
@@ -1255,13 +1284,13 @@ code {
   border: 0;
   background: none;
   font-size: 12px;
-  color: #99a38c;
+  color: #59664e;
   padding: 14px 0 15px;
   position: relative;
   font-weight: 500;
 }
 .library-tabs button span {
-  font-size: 8px;
+  font-size: 10px;
   padding: 2px 5px;
   background: #edf0e5;
   border-radius: 4px;
@@ -1279,11 +1308,16 @@ code {
   right: 0;
   background: #7a9755;
 }
+.library-tabs button:focus-visible {
+  border-radius: 3px;
+}
 .results-label {
   display: flex;
   justify-content: space-between;
   font-size: 10px;
-  color: #9ca68d;
+  color: #59664e;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 14px;
 }
 .results-label > span:last-child {
@@ -1297,6 +1331,8 @@ code {
   gap: 18px;
 }
 .resource-card {
+  display: flex;
+  flex-direction: column;
   border: 1px solid #e1e7d8;
   background: #fff;
   border-radius: 10px;
@@ -1310,6 +1346,8 @@ code {
   box-shadow: 0 4px 15px #34501f06;
 }
 .resource-card-art {
+  display: block;
+  flex-shrink: 0;
   height: 167px;
   position: relative;
 }
@@ -1326,7 +1364,8 @@ code {
   background: #ffffffaa;
   border: 1px solid #ffffff66;
   border-radius: 4px;
-  font-size: 8px;
+  color: #59664e;
+  font-size: 9px;
   letter-spacing: 0.6px;
   padding: 4px 7px;
   text-transform: uppercase;
@@ -1344,6 +1383,10 @@ code {
   align-items: center;
 }
 .resource-card-body {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
   padding: 18px 18px 0;
 }
 .resource-meta {
@@ -1353,12 +1396,13 @@ code {
   gap: 7px;
 }
 .resource-meta code {
-  font-size: 8px;
-  color: #9bab88;
+  overflow-wrap: anywhere;
+  font-size: 10px;
+  color: #59664e;
   letter-spacing: 0.5px;
 }
 .resource-meta .badge {
-  font-size: 8px;
+  font-size: 9px;
   padding: 3px 5px;
 }
 .resource-meta .badge-dot {
@@ -1366,14 +1410,16 @@ code {
   height: 3px;
 }
 .resource-card h2 {
-  font-size: 15px;
+  overflow-wrap: anywhere;
+  font-size: 16px;
   font-weight: 650;
   letter-spacing: -0.4px;
   margin: 9px 0 8px;
 }
 .resource-card p {
-  color: #98a08e;
-  font-size: 10px;
+  overflow-wrap: anywhere;
+  color: #59664e;
+  font-size: 12px;
   line-height: 1.7;
   min-height: 34px;
 }
@@ -1382,7 +1428,8 @@ code {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 16px;
+  margin-top: auto;
+  padding-top: 13px;
   padding: 13px 0;
   gap: 5px;
 }
@@ -1390,25 +1437,27 @@ code {
   display: flex;
   align-items: center;
   gap: 5px;
-  color: #9ba98a;
-  font-size: 8px;
+  color: #59664e;
+  font-size: 10px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .resource-card-footer .text-link {
-  font-size: 9px;
+  font-size: 11px;
 }
 .fallback-label {
   display: flex;
   align-items: center;
   gap: 4px;
-  color: #a49062;
-  font-size: 9px;
+  color: #735d28;
+  font-size: 10px;
   margin-top: 9px;
 }
 .resource-list {
   grid-template-columns: 1fr;
 }
 .resource-list .resource-card {
-  display: flex;
+  flex-direction: row;
 }
 .resource-list .resource-card-art {
   width: 210px;
@@ -1468,7 +1517,7 @@ code {
   border-top: 1px solid #e9eee0;
   padding: 15px 20px;
   margin-top: 14px;
-  color: #9da98b;
+  color: #59664e;
   font-size: 10px;
 }
 .pagination > div {
@@ -1476,7 +1525,7 @@ code {
   gap: 5px;
 }
 .pagination .button {
-  min-height: 35px;
+  min-height: 44px;
   padding: 8px 10px;
   font-size: 10px;
 }
@@ -2001,11 +2050,11 @@ tbody tr:hover {
   letter-spacing: -0.4px;
 }
 .migration-banner p:not(.eyebrow) {
-  color: #94a481;
+  color: #59664e;
   font-size: 11px;
 }
 .migration-banner .eyebrow {
-  color: #8da16f;
+  color: #59664e;
   font-size: 8px;
 }
 .migration-toolbar {
@@ -2024,12 +2073,12 @@ tbody tr:hover {
 .snapshot-label span {
   display: block;
   font-size: 9px;
-  color: #a2b18c;
+  color: #59664e;
   margin-bottom: 9px;
 }
 .snapshot-label code {
   font-size: 10px;
-  color: #819764;
+  color: #59664e;
 }
 .migration-stats {
   display: grid;
@@ -2047,7 +2096,7 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #95a282;
+  color: #59664e;
   font-size: 10px;
 }
 .migration-stat svg {
@@ -2063,7 +2112,7 @@ tbody tr:hover {
 }
 .migration-stat > p {
   font-size: 9px;
-  color: #a9b499;
+  color: #59664e;
 }
 .migration-stat-warning {
   background: #fefcf5;
@@ -2071,7 +2120,7 @@ tbody tr:hover {
 }
 .migration-stat-warning strong,
 .migration-stat-warning svg {
-  color: #a49a6e;
+  color: #766333;
 }
 .ledger-list {
   padding: 0 25px;
@@ -2111,22 +2160,22 @@ tbody tr:hover {
 }
 .ledger-content h3 {
   font-size: 12px;
-  color: #7d9462;
+  color: #59664e;
   font-weight: 600;
 }
 .ledger-content > p {
   font-size: 10px;
-  color: #a1af8b;
+  color: #59664e;
   margin-top: 4px;
 }
 .ledger-content small {
   display: block;
   margin-top: 8px;
   font-size: 9px;
-  color: #afbc9a;
+  color: #59664e;
 }
 .ledger-content .decision-reason {
-  color: #8e9f77;
+  color: #59664e;
   margin-top: 9px;
   max-width: 600px;
 }
@@ -2161,7 +2210,7 @@ tbody tr:hover {
   max-width: 375px;
   font-size: 14px;
   line-height: 1.95;
-  color: #8a9a76;
+  color: #59664e;
   margin: 25px 0 29px;
 }
 .sign-in-copy .button {
@@ -2173,7 +2222,7 @@ tbody tr:hover {
   display: flex;
   justify-content: space-between;
   font-size: 10px;
-  color: #a7b495;
+  color: #59664e;
 }
 .sign-in-visual {
   background: #22372a;
@@ -2221,7 +2270,7 @@ tbody tr:hover {
 }
 .visual-card .eyebrow {
   font-size: 9px;
-  color: #859a66;
+  color: #59664e;
 }
 .visual-card h2 {
   font-size: 31px;
@@ -2233,7 +2282,7 @@ tbody tr:hover {
 .visual-card > p:not(.eyebrow) {
   font-size: 12px;
   line-height: 1.9;
-  color: #94a679;
+  color: #59664e;
 }
 .visual-chain {
   display: flex;
@@ -2241,7 +2290,7 @@ tbody tr:hover {
   justify-content: space-between;
   margin-top: 35px;
   font-size: 9px;
-  color: #97aa7b;
+  color: #59664e;
 }
 .visual-chain i {
   width: 15px;
@@ -2306,7 +2355,7 @@ tbody tr:hover {
 .acceptance-card > p:not(.eyebrow) {
   font-size: 12px;
   line-height: 1.8;
-  color: #98aa81;
+  color: #59664e;
   margin-bottom: 18px;
 }
 .acceptance-card > .button {
@@ -2318,7 +2367,7 @@ tbody tr:hover {
   align-items: center;
   gap: 7px;
   font-size: 10px;
-  color: #88a36c;
+  color: #59664e;
   padding: 12px;
   border-radius: 6px;
   border: 1px solid #dce8cd;
@@ -2342,7 +2391,7 @@ tbody tr:hover {
   border-top: 1px solid #eaf0e2;
   padding-top: 12px;
   margin-top: 12px;
-  color: #93ae74;
+  color: #59664e;
 }
 .accepted-resource-plan strong {
   display: block;
@@ -2352,14 +2401,14 @@ tbody tr:hover {
 .accepted-resource-plan small {
   display: block;
   font-size: 9px;
-  color: #a5b993;
+  color: #59664e;
   margin-top: 2px;
 }
 .acceptance-switch {
   display: block;
   background: none;
   border: 0;
-  color: #a7b796;
+  color: #59664e;
   font-size: 9px;
   width: 100%;
   margin-top: 16px;
@@ -2369,7 +2418,7 @@ tbody tr:hover {
   align-items: center;
   gap: 7px;
   font-size: 10px;
-  color: #a0b388;
+  color: #59664e;
   margin-top: 24px;
 }
 
@@ -2573,15 +2622,19 @@ tbody tr:hover {
   }
   .toolbar {
     gap: 10px;
+    flex-wrap: wrap;
   }
   .search-box {
     width: 100%;
+    flex-basis: 100%;
   }
   .toolbar-actions {
-    gap: 5px;
+    gap: 8px;
+    width: 100%;
+    justify-content: space-between;
   }
   .display-switch {
-    display: none;
+    display: flex;
   }
   .filter-select {
     flex-shrink: 0;
@@ -3020,13 +3073,13 @@ tbody tr:hover {
     gap: 16px;
   }
   .library-tabs button {
-    font-size: 11px;
+    font-size: 12px;
   }
   .library-tabs button span {
     display: none;
   }
   .results-label {
-    font-size: 8px;
+    font-size: 10px;
     gap: 5px;
   }
   .resource-grid {
@@ -3040,16 +3093,16 @@ tbody tr:hover {
     font-size: 16px;
   }
   .resource-card p {
-    font-size: 11px;
+    font-size: 12px;
   }
   .resource-meta code {
-    font-size: 9px;
+    font-size: 10px;
   }
   .resource-card-footer > span {
-    font-size: 9px;
+    font-size: 10px;
   }
   .resource-card-footer .text-link {
-    font-size: 10px;
+    font-size: 11px;
   }
   .resource-list .resource-card {
     display: block;

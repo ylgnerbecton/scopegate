@@ -8,6 +8,7 @@ from typing import Any
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Connection, Engine
 
+from scopegate import telemetry
 from scopegate.config import get_settings
 from scopegate.errors import AppError
 
@@ -24,11 +25,12 @@ def get_engine() -> Engine:
 
 @contextmanager
 def transaction():
-    with get_engine().begin() as connection:
-        connection.execute(text("SET LOCAL lock_timeout='250ms'"))
-        connection.execute(text("SET LOCAL statement_timeout='750ms'"))
-        connection.execute(text("SET LOCAL transaction_timeout='1200ms'"))
-        yield connection
+    with telemetry.span("database.transaction", "postgresql"):
+        with get_engine().begin() as connection:
+            connection.execute(text("SET LOCAL lock_timeout='250ms'"))
+            connection.execute(text("SET LOCAL statement_timeout='750ms'"))
+            connection.execute(text("SET LOCAL transaction_timeout='1200ms'"))
+            yield connection
 
 
 def rows(connection: Connection, sql: str, parameters: dict[str, Any] | None = None) -> list[dict[str, Any]]:

@@ -2,11 +2,11 @@
 
 Scopegate makes the organization, project, and affected resources visible before an access change. The interface helps users act within an authorized scope and understand the result; the server remains the authority for every decision.
 
-Status: interaction specification. Screens and checks below define the intended implementation.
+Status: implemented local interaction contract. The source links below identify current ownership; browser evidence certifies the recorded release revision. Proposed extensions and manual validation limits are stated explicitly.
 
 ## Navigation and scope
 
-The shell shows the active organization and project in the header and page title. Organization and project identifiers live in the URL so reloads and shared links preserve context. A route that names an unauthorized scope shows a controlled unavailable state rather than silently selecting a different organization.
+The shell shows the active organization and project in the header. Change dialogs repeat their target and scoped project in their heading or subtitle. Organization and project identifiers live in the URL so reloads and shared links preserve context. A route that names an unauthorized scope shows a controlled unavailable state rather than silently selecting a different organization.
 
 Every scoped query key includes the principal and selected organization, plus the project identifier where applicable. Switching organization cancels pending scope requests, closes detail panels, clears selection and unsaved grant drafts after an explicit discard prompt, resets project selection, and invalidates the departed scope's cache. Responses from an old scope cannot populate the new scope's panels. Switching project applies the same rules to project bound state. Logout and account switching clear the session cache.
 
@@ -35,7 +35,7 @@ After acceptance, the viewer sees the selected organization's library with only 
 
 ## Resource access editor
 
-The editor is titled with the member, organization, and project. It lists published resources entitled to that exact project, with current grant state and localized metadata. Archived or removed entitlements remain visible in historical context but cannot be newly granted.
+The editor is titled with the member, organization, and project. It lists published resources entitled to that exact project, with current grant state and localized metadata. Archived or removed entitlements cannot be newly granted. Durable audit summaries retain prior changes; the selectable list is bounded to currently available project resources.
 
 Search filters this scoped list and handles missing optional metadata. Stable resource identifiers remain available in the detail view when titles are similar. Selection survives search changes within the same scope and is cleared when the scope changes.
 
@@ -84,11 +84,11 @@ The member summary, resource list, audit feed, and migration summary are indepen
 
 Audit rows show timestamp, actor, organization, project where applicable, action, target, outcome, and correlation identifier. Resource diffs can be expanded into additions and removals. Sensitive invitation tokens and identity credentials never appear.
 
-Filters include action, target, and time range. An access manager sees only the authorized organization. Operations review across organizations uses an explicitly authorized operational path; staff membership alone does not expose a global audit feed.
+The implemented workspace filters by action and traverses bounded cursor pages. Each row exposes its target, timestamp and safe change details. Target and time-range filters are proposed extensions; they are not controls in this release. An access manager sees only the authorized organization. Operations review across organizations uses an explicitly authorized operational path; staff membership alone does not expose a global audit feed.
 
 ## Migration workbench
 
-The workbench is clearly labelled as a dry run until a separately authorized cutover begins. Its header identifies snapshot and manifest versions, the bounded cohort, effective access counts, parity differences, and unresolved record counts.
+The workbench is clearly labelled as a dry run until a separately authorized cutover begins. Its header identifies the selected run, source snapshot fingerprint, run state, unresolved records and unreviewed gains/losses. The downloadable manifest retains the complete versioned evidence; the CLI owns comparison and readiness checks.
 
 Each exception shows the source record reference, reason, potential access effect, owner, and decision history. Product decisions on licensed entitlements, approval policy, and unresolved historical access are explicit. No bulk control approves unresolved records or substitutes a default organization. A blocking exception keeps its organization out of cutover, even if other records within that organization reconcile.
 
@@ -100,7 +100,7 @@ Verify the workflow at 375, 768, and 1440 CSS pixels. At narrow widths, scope se
 
 Use semantic landmarks, one main heading per route, labelled inputs, native controls, visible keyboard focus, and status text independent of color. Associate field errors with their controls and announce async outcomes through an appropriate live region. Dialogs trap focus and restore it to their trigger; destructive confirmation must remain usable with a keyboard.
 
-Verify a complete keyboard journey and a screen reader walkthrough for invitation acceptance, grant preview, resource use, and revocation. Reduced motion preferences apply to transitions. Touch targets use at least 44 by 44 CSS pixels where practical.
+The automated browser gate executes three complete keyboard operator journeys and Axe scans without excluded rules. Native controls, dialog naming and live statuses support assistive technology; a human screen-reader walkthrough has not been recorded and remains a manual validation step. Automated scans do not establish full accessibility conformance. Reduced motion preferences apply to transitions. Touch targets use at least 44 by 44 CSS pixels where practical.
 
 ## Verification scenarios
 
@@ -109,3 +109,5 @@ The browser journey must prove invitation acceptance with an explicit grant plan
 Additional checks cover missing translations, archived resources, scoped search, failed and stale diffs, expired invitations, staff expiry, last manager protection, partial panel failure, and unresolved migration exceptions. Verify visible behavior against server state; a screenshot alone cannot prove authorization correctness.
 
 Behavior depends on the [product requirements](PRODUCT.md), [architecture](ARCHITECTURE.md), [API contract](API.md), and [migration controls](MIGRATION.md).
+
+[Component design](COMPONENT_DESIGN.md) specifies source ownership, shared control APIs, query/cursor identity and feature recovery states. [Solution review](SOLUTION_REVIEW.md) connects these interactions to the full delivery coverage and evidence boundaries.

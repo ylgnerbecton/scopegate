@@ -11,6 +11,8 @@ from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
 from prometheus_client import Counter, Gauge, Histogram
 from starlette.responses import JSONResponse
 
+from scopegate import telemetry
+
 REQUESTS = Counter("scopegate_http_requests_total", "Completed HTTP requests", ["route", "method", "status"])
 LATENCY = Histogram(
     "scopegate_http_duration_seconds",
@@ -43,46 +45,58 @@ def update_operational_metrics() -> None:
 
 
 class SafeFileSpanExporter(SpanExporter):
-    """Local trace evidence includes no URL, query, cookie or principal attribute."""
+    """Export causal IDs and bounded names without payloads or exception events."""
 
     def export(self, spans):
         from scopegate.config import get_settings
 
-        directory = get_settings().journal_directory.parent / "traces"
-        directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-        descriptor = os.open(directory / "spans.jsonl", os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o600)
         try:
-            for span in spans:
-                attributes = span.attributes or {}
-                safe = {
-                    key: attributes[key]
-                    for key in [
-                        "http.route",
-                        "http.request.method",
-                        "http.method",
-                        "http.response.status_code",
-                        "http.status_code",
-                    ]
-                    if key in attributes
-                }
-                for key in ("http.request.method", "http.method"):
-                    if key in safe:
-                        safe[key] = bounded_method(safe[key])
-                route = safe.get("http.route", "internal")
-                method = safe.get("http.request.method", safe.get("http.method", "INTERNAL"))
-                record = {
-                    "trace_id": format(span.context.trace_id, "032x"),
-                    "span_id": format(span.context.span_id, "016x"),
-                    "name": f"{method} {route}",
-                    "start_ns": span.start_time,
-                    "end_ns": span.end_time,
-                    "status": span.status.status_code.name,
-                    "attributes": safe,
-                }
-                os.write(descriptor, (json.dumps(record) + "\n").encode())
-        finally:
-            os.close(descriptor)
-        return SpanExportResult.SUCCESS
+            directory = get_settings().journal_directory.parent / "traces"
+            directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+            descriptor = os.open(directory / "spans.jsonl", os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o600)
+            try:
+                for active in spans:
+                    content = (json.dumps(safe_span_record(active)) + "\n").encode()
+                    if os.write(descriptor, content) != len(content):
+                        raise OSError("Incomplete diagnostic write")
+            finally:
+                os.close(descriptor)
+            return SpanExportResult.SUCCESS
+        except Exception:
+            telemetry.unavailable("export")
+            return SpanExportResult.FAILURE
+
+
+def safe_span_record(active) -> dict:
+    attributes = active.attributes or {}
+    safe = {
+        key: attributes[key]
+        for key in ["http.route", "http.request.method", "http.method", "http.response.status_code", "http.status_code"]
+        if key in attributes
+    }
+    for key in ("http.request.method", "http.method"):
+        if key in safe:
+            safe[key] = bounded_method(safe[key])
+    operation = attributes.get("scopegate.operation")
+    if operation in telemetry.OPERATIONS:
+        safe["scopegate.operation"] = operation
+    dependency = attributes.get("scopegate.dependency")
+    if dependency in telemetry.DEPENDENCIES:
+        safe["scopegate.dependency"] = dependency
+    name = "scopegate." + operation if operation in telemetry.OPERATIONS else http_span_name(safe)
+    return {
+        "trace_id": format(active.context.trace_id, "032x"),
+        "span_id": format(active.context.span_id, "016x"),
+        "parent_span_id": format(active.parent.span_id, "016x") if active.parent else None,
+        "name": name, "start_ns": active.start_time, "end_ns": active.end_time,
+        "status": active.status.status_code.name, "attributes": safe,
+    }
+
+
+def http_span_name(attributes: dict) -> str:
+    route = attributes.get("http.route", "internal")
+    method = attributes.get("http.request.method", attributes.get("http.method", "INTERNAL"))
+    return f"{method} {route}"
 
 
 def correlation(value: str | None) -> str:
@@ -173,6 +187,7 @@ class OperationalMiddleware:
                         "status": status,
                         "duration_ms": round(elapsed * 1000, 2),
                         "correlation_id": identifier,
+                        "trace_id": telemetry.current_trace_id(),
                     }
                 )
             )

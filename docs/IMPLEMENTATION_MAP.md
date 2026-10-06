@@ -14,7 +14,7 @@
 | Enrollment and durable delivery | `services/enrollment.py`, `delivery.py`, `worker.py` |
 | Synthetic reconciliation and authority protocol | `services/migration.py`, `cli.py` |
 | Independent journal and restore fence | `journal.py`, `services/recovery.py` |
-| Signals and containment | `observability.py`, `services/operations.py`, `ops/alerts.yaml` |
+| Signals, causal spans and containment | `observability.py`, `telemetry.py`, `services/operations.py`, `ops/alerts.yaml` |
 | Feature-based workspace | `frontend/src/features/`, `frontend/src/lib/` |
 | Browser evidence | `frontend/e2e/`, `docs/screenshots/` |
 | Contracts and acceptance | `specs/contracts/`, `specs/features/`, `specs/scenario-tests.json` |
@@ -25,3 +25,5 @@ HTTP adapters parse bounded input and delegate. Services own transactions. Share
 Generated OpenAPI is checked against independent canonical paths, operation identifiers, required headers and query parameters. Transport tests validate actual JSON against canonical response schemas. Frontend types must reproduce exactly from the same contract.
 
 Browser cache keys include principal, organization and project. Account changes clear server state; an old organization's response cannot render under a new selection. A grant conflict preserves the draft and requires another review before submission.
+
+[Component design](COMPONENT_DESIGN.md) records shared control contracts and cursor recovery. [Solution review](SOLUTION_REVIEW.md) maps required outcomes to design, implementation and proof boundaries.

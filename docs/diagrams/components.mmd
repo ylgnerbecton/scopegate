@@ -1,0 +1,47 @@
+flowchart TB
+    accTitle: Scopegate implemented component view
+    accDescr: Source-backed application responsibilities: thin HTTP transport, cohesive use cases, pure policy, shared command semantics, bounded primary transactions and external local adapter calls.
+    subgraph transport[Composition and transport]
+        entry[main.py · api/*.py<br/>Bounded input and safe errors]
+        principal[dependencies.py · services/identity.py<br/>Session · CSRF · distinct machine actors]
+        entry --> principal
+    end
+    subgraph usecases[Application services own state transitions]
+        access[workspace.py · access.py · invariants.py<br/>Membership · grant delta · protected reports]
+        enrollment[enrollment.py · delivery.py<br/>Recipient plan · acceptance · outbox]
+        catalog[catalog.py · entitlements.py<br/>Publication · scoped availability]
+        migration[migration.py · recovery.py · compatibility.py<br/>Reviewed mapping · epoch · restore fence]
+    end
+    subgraph shared[Shared rule and transaction boundaries]
+        policy[domain/policy.py<br/>Pure resource-use predicate]
+        common[services/common.py<br/>Scoped authority · receipt · audit · cursor]
+        database[db.py<br/>READ COMMITTED · ordered locks · budgets]
+        common --> database
+    end
+    primary[(One primary PostgreSQL<br/>Composite ownership constraints)]
+    journal[journal.py<br/>Prepare before · outcome after transaction]
+    worker[worker.py → delivery.py<br/>Claim · committed send · lease finalization]
+    cli[cli.py<br/>Operations credential and explicit manifests]
+    telemetry[telemetry.py · observability.py<br/>Causal spans · bounded safe async export]
+    principal --> access
+    principal --> enrollment
+    principal --> catalog
+    principal --> migration
+    access --> policy
+    access --> common
+    enrollment --> common
+    catalog --> common
+    migration --> common
+    database --> primary
+    common -->|Journal wrapper outside locks| journal
+    worker --> enrollment
+    cli --> migration
+    entry -.->|Diagnostic context| telemetry
+    database -.->|Transaction spans| telemetry
+    worker -.->|Encrypted outbox trace context| telemetry
+    classDef core fill:#f0fdfa,stroke:#0f766e,color:#134e4a;
+    classDef shared fill:#eff6ff,stroke:#2563eb,color:#172554;
+    classDef authority fill:#0f172a,stroke:#0f172a,color:#ffffff;
+    class entry,principal,access,enrollment,catalog,migration core;
+    class policy,common,database,journal,worker,cli,telemetry shared;
+    class primary authority;

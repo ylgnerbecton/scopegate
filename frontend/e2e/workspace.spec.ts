@@ -125,6 +125,7 @@ test('verified invitation, scoped grant diff, resource use, revocation, and audi
   await page.getByRole('button', { name: /Morgan Lane/ }).click();
   await expect(page.getByRole('heading', { name: 'Your explicit resource plan' })).toBeVisible();
   await expect(page).toHaveURL(/\/invitations\/accept$/);
+  await scanAccessibility(page, 'verified-recipient-plan');
   await page.getByRole('button', { name: 'Accept invitation', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Invitation accepted.' })).toBeVisible();
   await page.getByRole('button', { name: 'Enter Cedar Studio' }).click();
@@ -189,6 +190,7 @@ test('delivery and expiry remain distinct while competing migration evidence req
 }) => {
   await login(page, 'Amelia Brooks');
   await navigate(page, 'Invitations');
+  await scanAccessibility(page, 'invitation-history');
   const expired = page.getByRole('row').filter({ hasText: 'expired@example.test' });
   await expect(expired).toContainText('expired');
   await expect(expired).toContainText('Acceptance window closed');
@@ -201,6 +203,8 @@ test('delivery and expiry remain distinct while competing migration evidence req
   await signOut(page);
   await login(page, 'Rowan Vale');
   await navigate(page, 'Migration review');
+  await expect(page.locator('.ledger-item').first()).toBeVisible();
+  await scanAccessibility(page, 'migration-review');
   await expect(page.getByRole('button', { name: /cutover/i })).toHaveCount(0);
   const organization = '/api/v1/organizations/20000000-0000-4000-8000-000000000001';
   const runs = await (await page.request.get(`${organization}/migration-runs?limit=100`)).json();
@@ -367,6 +371,9 @@ test('staff account switching clears scoped resources and keeps role separate fr
 test('localized search, narrow layouts, keyboard navigation, and last manager protection', async ({
   page,
 }) => {
+  await page.goto('/');
+  await expect(page.getByRole('link', { name: 'Sign in to your workspace' })).toBeVisible();
+  await scanAccessibility(page, 'sign-in-entry');
   await login(page, 'Amelia Brooks');
   await navigate(page, 'Resource library');
   await page.getByLabel('Resource language', { exact: true }).selectOption('pt');
@@ -388,7 +395,7 @@ test('localized search, narrow layouts, keyboard navigation, and last manager pr
   await expect(
     page.getByRole('button', { name: 'Suspend Amelia Brooks', exact: true }),
   ).toBeFocused();
-  test.setTimeout(240_000);
+  test.setTimeout(360_000);
   for (const width of [375, 768, 1440]) {
     await page.setViewportSize({ width, height: 950 });
     const keyboard = new KeyboardJourney(page, width);
@@ -397,8 +404,28 @@ test('localized search, narrow layouts, keyboard navigation, and last manager pr
     await scanAccessibility(page, `members-${width}`);
 
     // Every operator action in these journeys uses browser keyboard events only.
+    await keyboard.navigate('Overview');
+    await expect(page.locator('.resource-preview')).toHaveCount(3);
+    await scanAccessibility(page, `overview-${width}`);
+    await keyboard.navigate('Resource library');
+    await expect(page.locator('.resource-card')).toHaveCount(3);
+    await expect(page.getByRole('button', { name: 'Grid view', pressed: true })).toBeVisible();
+    await scanAccessibility(page, `resource-grid-${width}`);
+    await keyboard.activate(page.getByRole('button', { name: 'List view', exact: true }));
+    await expect(page.getByRole('button', { name: 'List view', pressed: true })).toBeVisible();
+    await scanAccessibility(page, `resource-list-${width}`);
+    await keyboard.type(page.getByRole('searchbox'), 'Market');
+    await expect(page.locator('.resource-card')).toHaveCount(1);
+    await keyboard.activate(page.getByRole('button', { name: 'Clear search', exact: true }));
+    await expect(page.getByRole('searchbox')).toBeFocused();
+    await expect(page.getByRole('searchbox')).toHaveValue('');
+    await expect(page.locator('.resource-card')).toHaveCount(3);
+    await keyboard.navigate('Audit activity');
+    await expect(page.locator('.audit-event').first()).toBeVisible();
+    await scanAccessibility(page, `audit-activity-${width}`);
     await keyboard.navigate('Invitations');
     await keyboard.startInvitationHistory();
+    await scanAccessibility(page, `invitation-history-${width}`);
     await keyboard.activate(page.getByRole('button', { name: 'Create invitation', exact: true }));
     await keyboard.type(page.getByRole('textbox', { name: 'Recipient email' }), email);
     await keyboard.toggle(page.getByRole('checkbox', { name: /Market pulse/ }));

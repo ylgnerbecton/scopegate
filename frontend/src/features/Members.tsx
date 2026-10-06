@@ -229,9 +229,11 @@ function MemberPage({
         )}
         <Pagination
           page={members.page}
-          hasNext={Boolean(members.data?.next_cursor)}
+          hasNext={members.hasNext}
           next={members.next}
           previous={members.previous}
+          busy={members.isFetching}
+          label="Member pages"
         />
       </section>
       <div className="inline-guidance">
@@ -565,12 +567,13 @@ export function EntitledChoices({
     scopedPath(scope.organization, `/projects/${scope.project}/resources`),
     { view: 'entitled', locale: 'en', q: search },
   );
-  if (resources.isPending) return <Loading label="Loading entitled resources" />;
-  if (resources.error)
-    return <ErrorPanel error={resources.error} retry={() => void resources.refetch()} />;
   return (
     <div className="entitled-choices">
-      {resources.data?.items.length ? (
+      {resources.isPending ? (
+        <Loading label="Loading entitled resources" />
+      ) : resources.error ? (
+        <ErrorPanel error={resources.error} retry={() => void resources.refetch()} />
+      ) : resources.data?.items.length ? (
         resources.data.items.map((resource) => (
           <label className="resource-choice" key={resource.id}>
             <input
@@ -595,15 +598,27 @@ export function EntitledChoices({
         ))
       ) : (
         <Empty
-          title="No entitled resources"
-          detail="Project entitlements must be assigned before a manager can create an individual grant."
+          title={
+            search
+              ? 'No entitled resources match this search'
+              : 'No entitled resources on this page'
+          }
+          detail={
+            search
+              ? 'Change the search to inspect other resources. Your selected plan is preserved.'
+              : resources.page > 1
+                ? 'Return to the previous page to inspect the current collection. Your selected plan is preserved.'
+                : 'Project entitlements must be assigned before a manager can create an individual grant.'
+          }
         />
       )}
       <Pagination
         page={resources.page}
-        hasNext={Boolean(resources.data?.next_cursor)}
+        hasNext={resources.hasNext}
         next={resources.next}
         previous={resources.previous}
+        busy={resources.isFetching}
+        label="Entitled resource pages"
       />
     </div>
   );

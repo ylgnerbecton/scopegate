@@ -8,7 +8,7 @@ The registry contains 230 concepts. Adoption defines an engineering requirement,
 
 One shared policy determines whether a principal may consume a resource in an organization and project. It requires valid identity, active organization/project, active unexpired membership, published resource, active entitlement, and explicit individual grant. A manager role is management authority, not content access. Staff follows the same predicate with required expiry.
 
-Services own transaction boundaries. Scoped repositories read and persist without independently committing. A changed grant command updates grants, the membership access version, receipt, and audit in one transaction. Ordered locks coordinate protected use with revocation; a browser decision or replica snapshot cannot replace current authority.
+Services own transaction boundaries. Scoped SQL helpers read and persist through the caller's connection without independently committing; the implementation does not introduce repository classes. A changed grant command updates grants, the membership access version, receipt, and audit in one transaction. Ordered locks coordinate protected use with revocation; a browser decision or replica snapshot cannot replace current authority.
 
 DRY applies to those repeated rules and boundaries. It does not require combining similar syntax from unrelated responsibilities. KISS favors one policy, specific commands, native transactions, and a small composition root. YAGNI excludes machinery without an accepted consumer. SOLID gives each module a purpose and puts interfaces at actual identity, delivery, source, and consumption seams. It does not require a class for every function.
 
@@ -26,6 +26,8 @@ Measure changed production functions with one pinned tool and rule configuration
 | Above 10 through 15 | Review the paths, nesting, and focused tests before merging |
 | Above 15 through 20 | Refactor before merging, or record a principal approved bounded exception |
 | Above 20 | Fail the quality gate unless the explicit exception process applies |
+
+The closed local release adopts the stricter automated limit of **10** for every callable under `backend/src` and `identity_provider`. [The static gate](QUALITY.md#static-architecture-and-complexity-protection) measures the complete source inventory with locked Radon 6.0.1 and rejects any score above 10; it has no runtime exception switch. The broader review bands above guide future policy decisions and cannot override the current executable gate. Changing that limit requires an explicit reviewed source change and fresh release evidence.
 
 An exception names the exact function and revision, current measured value, reason extraction would be harmful, owner, compensating tests, debt item, and removal condition. It expires before the next release and needs a new reviewed decision to continue. The principal lead owns the exception; a contributor cannot suppress the rule locally. An exception cannot waive tenant isolation, transaction atomicity, or release evidence. Exclusions for generated code must be documented and must not hide handwritten policy.
 

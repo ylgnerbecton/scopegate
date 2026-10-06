@@ -1,4 +1,6 @@
 sequenceDiagram
+    accTitle: Scopegate verified invitation and single-use acceptance
+    accDescr: Creation atomically persists a reviewed plan and encrypted outbox. Worker delivery is postcommit, verified acceptance locks and rechecks current scope, receipt and expiry.
     autonumber
     actor Manager as Access Manager
     participant API as Scopegate API
@@ -15,16 +17,23 @@ sequenceDiagram
     API->>DB: Insert audit event and encrypted outbox payload
     API->>DB: Commit
     API-->>Manager: Invitation created
-    Worker->>DB: Claim committed outbox item
+    Worker->>DB: Claim committed item with lease and generation, commit
     Worker->>Adapter: Deliver bounded invitation link
     Adapter-->>Recipient: Invitation link
-    Worker->>DB: Record delivery outcome and purge sensitive payload
+    Worker->>DB: Acknowledge current lease token and generation
+    Note over Worker,DB: Delivery may repeat after a crash.<br/>Purge follows terminal retention.
 
-    Recipient->>API: Start authenticated preview
-    API->>OIDC: Authorization Code with PKCE
-    OIDC-->>API: Validated issuer subject verified email and auth_time
-    API->>DB: Store verified session claims and resolve invitation digest
-    API->>DB: Match recipient using fresh verified session claims
+    Note over Recipient,API: Invitation secret is removed from the URL before login.<br/>OIDC redirects carry no invitation secret.
+    Recipient->>API: Start login for recipient preview
+    API-->>Recipient: Redirect with state, nonce and S256 challenge
+    Recipient->>OIDC: Authenticate at configured issuer
+    OIDC-->>Recipient: Redirect callback with code and state
+    Recipient->>API: Browser-bound callback
+    API->>OIDC: Exchange code and verifier, validate configured JWKS
+    OIDC-->>API: Signed issuer, subject, verified email and auth_time
+    API->>DB: Store trusted claims in opaque session
+    Recipient->>API: Preview invitation using session and token
+    API->>DB: Match digest and recipient using fresh claims
     API-->>Recipient: Organization and bounded resource plan without acceptance
     Recipient->>API: Confirm acceptance with token and idempotency key
     API->>DB: Begin transaction and lock sorted resource rows
@@ -56,4 +65,4 @@ sequenceDiagram
             end
         end
     end
-    Note over API,DB: Suspended membership is not reactivated automatically.<br/>Existing manager is not downgraded.<br/>Replay cannot create another acceptance transition.
+    Note over API,DB: Suspended members stay suspended.<br/>Existing manager role is preserved.<br/>Replay creates no new acceptance.

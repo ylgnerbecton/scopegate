@@ -1,20 +1,32 @@
 flowchart LR
-    viewer[Viewer]
-    manager[Access Manager]
-    staff[Staff with expiration]
-    operations[Platform Operations]
-    publisher[Catalog Publisher]
-    provider[OIDC Provider]
-    delivery[Delivery Adapter]
-    journal[Durable Intent Journal\nLive recovery integration]
-    product[Scopegate\nOrganization and resource access]
-
-    viewer -->|Use explicitly granted resources| product
-    manager -->|Manage access within entitlements| product
-    staff -->|Use explicitly granted resources| product
-    operations -->|Controlled manager and staff provisioning| product
-    publisher -->|Allowlisted catalog writes\nScoped machine credential| product
-    product -->|Authenticate immutable identity| provider
-    product -->|Deliver committed invitation| delivery
-    product -->|Prepared intent and committed outcome| journal
-    delivery -->|Sensitive invitation link| viewer
+    accTitle: Scopegate system context
+    accDescr: Users and machine actors have separate authority. Local identity, delivery and journal adapters support the reproducible release; real integrations require separate delivery.
+    subgraph people[People and scoped accounts]
+        viewer[Viewer<br/>Explicit consumption grants]
+        manager[Access manager<br/>Own organization only]
+        staff[Temporary staff<br/>Expiry and explicit grants]
+    end
+    subgraph machines[Separate machine authorities]
+        platform[Platform operations<br/>Provisioning and entitlements]
+        publisher[Catalog Publisher<br/>Catalog-only credential]
+        maintenance[Maintenance operator<br/>Reviewed ownership and recovery]
+    end
+    product[Scopegate<br/>Organization access workspace]
+    identity[Identity provider<br/>Local independent OIDC]
+    delivery[Delivery integration<br/>Local protected mailbox]
+    journal[Recovery evidence<br/>Local independent journal]
+    viewer -->|Use granted resources| product
+    manager -->|Review access and invitations| product
+    staff -->|Scoped use and approved review| product
+    platform -->|Platform credential| product
+    publisher -->|Publisher credential| product
+    maintenance -->|Separate operations CLI| product
+    product -->|Verify issuer and subject| identity
+    product -->|Committed invitation link| delivery
+    product -->|Prepared intent and outcome| journal
+    classDef actor fill:#f1f5f9,stroke:#64748b,color:#0f172a;
+    classDef system fill:#0f766e,stroke:#115e59,color:#ffffff;
+    classDef adapter fill:#eff6ff,stroke:#2563eb,color:#172554;
+    class viewer,manager,staff,platform,publisher,maintenance actor;
+    class product system;
+    class identity,delivery,journal adapter;

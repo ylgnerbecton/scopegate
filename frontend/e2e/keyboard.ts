@@ -14,7 +14,7 @@ export async function writeBrowserEvidence(name: string, body: unknown) {
 export async function writeInteractionEvidence(page: Page) {
   const current = pageEvidence(page);
   expect(current.journeys).toHaveLength(3);
-  expect(current.scans.length).toBeGreaterThanOrEqual(15);
+  expect(current.scans.length).toBeGreaterThanOrEqual(30);
   await writeBrowserEvidence('interaction-evidence', {
     schemaVersion: 1,
     recordedAt: new Date().toISOString(),
@@ -119,7 +119,8 @@ export class KeyboardJourney {
         .getByRole('navigation', { name: 'Main navigation' })
         .getByRole('button', { name: label, exact: true }),
     );
-    await expect(this.page.getByRole('heading', { name: label, exact: true })).toBeVisible();
+    const heading = label === 'Overview' ? /^Good to see you,/ : label;
+    await expect(this.page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
   }
   async startInvitationHistory() {
     await expect(this.page.getByRole('table')).toBeVisible();
@@ -181,6 +182,8 @@ export class KeyboardJourney {
       viewport: this.width,
       input: 'keyboard only',
       completed: [
+        'scoped library layout and search-clear focus',
+        'overview and audit navigation',
         'invitation create/review/revoke',
         'grant add/review/confirm',
         'grant remove/review/confirmation',
@@ -194,6 +197,8 @@ export class KeyboardJourney {
           viewport: this.width,
           input: 'Tab, Enter, Space, text entry, Escape only',
           completed: [
+            'scoped library layout and search-clear focus',
+            'overview and audit navigation',
             'invitation create/review/revoke',
             'grant add/review/confirm',
             'grant remove/review/confirmation',

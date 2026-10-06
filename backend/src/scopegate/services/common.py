@@ -13,7 +13,7 @@ from uuid import UUID, uuid4
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import text
 
-from scopegate import db, journal
+from scopegate import db, journal, telemetry
 from scopegate.config import get_settings
 from scopegate.errors import AppError
 
@@ -90,7 +90,7 @@ def journaled(operation: str, binding: Callable[..., tuple[str, str, dict]]) -> 
             finally:
                 _journal_reference.reset(token)
 
-        return command
+        return telemetry.traced(operation)(command)
 
     return decorate
 

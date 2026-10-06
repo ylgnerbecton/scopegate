@@ -21,7 +21,7 @@ from cryptography.fernet import Fernet, InvalidToken
 from fastapi import Request
 from sqlalchemy import text
 
-from scopegate import db
+from scopegate import db, telemetry
 from scopegate.config import get_settings
 from scopegate.errors import AppError
 from scopegate.services.common import membership_view, serialize
@@ -46,7 +46,8 @@ def network_budget(function):
             _NETWORK_DEADLINE.reset(token)
             _OIDC_SLOTS.release()
 
-    return bounded
+    operation = {"start_login": "identity.login.start", "finish_login": "identity.login.finish"}
+    return telemetry.traced(operation.get(function.__name__, "internal.other"), "oidc")(bounded)
 
 
 def provider_timeout():
@@ -86,19 +87,21 @@ def _provider_url(url: str) -> str:
 
 def _get_json(url: str) -> dict:
     try:
-        with httpx.Client(timeout=provider_timeout(), follow_redirects=False) as client:
-            response = client.get(_provider_url(url))
-            response.raise_for_status()
-            verify_deadline()
-            if len(response.content) > 65536:
-                raise ValueError("Oversized provider response")
-            return response.json()
+        with telemetry.span("identity.fetch", "oidc"):
+            with httpx.Client(timeout=provider_timeout(), follow_redirects=False) as client:
+                response = client.get(_provider_url(url))
+                response.raise_for_status()
+                verify_deadline()
+                if len(response.content) > 65536:
+                    raise ValueError("Oversized provider response")
+                return response.json()
     except (httpx.HTTPError, ValueError, TypeError) as exc:
         raise AppError(
             503, "identity_unavailable", "The identity provider is temporarily unavailable."
         ) from exc
 
 
+@telemetry.traced("identity.metadata", "oidc")
 def provider_metadata() -> dict:
     settings = get_settings()
     issuer = settings.oidc_issuer.rstrip("/")
@@ -165,6 +168,7 @@ def verify_flow(encrypted: str | None, state: str) -> dict:
         ) from exc
 
 
+@telemetry.traced("identity.keys", "oidc")
 def _signing_key(signed: str, metadata: dict):
     header = jwt.get_unverified_header(signed)
     if header.get("alg") != "RS256" or not header.get("kid"):
@@ -229,9 +233,17 @@ def verify_id_token(signed: str, metadata: dict, nonce: str) -> dict:
 def finish_login(
     code: str, encrypted: str | None, state: str, previous_session: str | None = None
 ) -> tuple[str, str]:
-    settings = get_settings()
     flow = verify_flow(encrypted, state)
     metadata = provider_metadata()
+    signed = _exchange_code(metadata, flow, code)
+    claims = verify_id_token(signed, metadata, flow["nonce"])
+    opaque = create_session(claims, previous_session)
+    return opaque, flow["return_to"]
+
+
+@telemetry.traced("identity.exchange", "oidc")
+def _exchange_code(metadata: dict, flow: dict, code: str) -> str:
+    settings = get_settings()
     try:
         with httpx.Client(timeout=provider_timeout(), follow_redirects=False) as client:
             response = client.post(
@@ -248,12 +260,9 @@ def finish_login(
             verify_deadline()
             if len(response.content) > 65536:
                 raise ValueError("Oversized token response")
-            signed = response.json()["id_token"]
+            return response.json()["id_token"]
     except (httpx.HTTPError, ValueError, KeyError, TypeError) as exc:
         raise AppError(401, "authentication_failed", "The sign-in code could not be exchanged.") from exc
-    claims = verify_id_token(signed, metadata, flow["nonce"])
-    opaque = create_session(claims, previous_session)
-    return opaque, flow["return_to"]
 
 
 def create_session(claims: dict, previous_session: str | None = None) -> str:

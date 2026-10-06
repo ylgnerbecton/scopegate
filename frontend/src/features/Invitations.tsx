@@ -100,9 +100,11 @@ export function Invitations({ scope, project }: { scope: Scope; project: Schema<
         )}
         <Pagination
           page={invitations.page}
-          hasNext={Boolean(invitations.data?.next_cursor)}
+          hasNext={invitations.hasNext}
           next={invitations.next}
           previous={invitations.previous}
+          busy={invitations.isFetching}
+          label="Invitation pages"
         />
       </section>
       <LocalMailbox scope={scope} />

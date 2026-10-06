@@ -15,12 +15,12 @@ Use small policy functions and explicit use cases rather than repeating conditio
 | Static checks | Catch malformed contracts, types and dependencies | Python lint and typing; TypeScript typing and lint; dependency and secret scans |
 | Policy unit tests | Prove the decision matrix and time boundaries | Allowed and denied examples for each predicate, role and membership kind |
 | PostgreSQL integration | Prove SQL constraints, transaction boundaries and actual locks | PostgreSQL 18 connections with realistic transaction interleavings |
-| HTTP contract tests | Prove validation, authentication, error mapping and scope | Requests using real repositories and synthetic actors across two organizations |
+| HTTP contract tests | Prove validation, authentication, error mapping and scope | Requests using primary SQL transactions and synthetic actors across two organizations |
 | Browser tests | Prove usable access management and tenant state handling | Viewer, manager, invitation, organization switching and stale response scenarios |
-| Migration rehearsal | Prove old and new decision equivalence and safe cutover | PostgreSQL 15 source snapshot, target checks, ledger and revocation preservation |
+| Migration rehearsal | Prove old and new decision equivalence and safe cutover | Synthetic source fixtures on PostgreSQL 18, target checks, ledger and revocation preservation |
 | Operational rehearsal | Prove recovery and bounded degradation | Restore, worker retry, provider outage and transaction timeout evidence |
 
-SQLite or mocks cannot substitute for PostgreSQL lock or composite foreign key tests. Tests using the development identity adapter cannot substitute for the real OIDC provider integration.
+SQLite or mocks cannot substitute for PostgreSQL lock or composite foreign key tests. A PostgreSQL 15 production engine upgrade needs its own source-environment rehearsal; the local fixture does not certify that upgrade. Tests using the development identity adapter cannot substitute for the real OIDC provider integration.
 
 ## Authorization matrix
 
@@ -94,7 +94,7 @@ Grant reads use bounded cursor pages carrying the membership access version. A c
 
 | Canonical gate | Planned command | Required result |
 | --- | --- | --- |
-| G-LINT | `make lint typecheck` | Backend/frontend lint and strict types |
+| G-LINT | `make lint typecheck` | Backend/frontend lint, Python import/complexity boundaries, configured mypy checks and strict TypeScript |
 | G-DOMAIN | `make test-unit` | Policy, transitions, and identity adapter unit tests |
 | G-DATABASE | `make test-integration` | Real PostgreSQL constraints, transactions, and concurrency |
 | G-CONTRACT | `make check-contracts` | Generated API and client compatibility |
@@ -108,6 +108,14 @@ Grant reads use bounded cursor pages carrying the membership access version. A c
 | G-OPERATIONS | `make test-operations` | Delivery crash, alert, recovery, purge and incident drills |
 
 Every local release candidate requires all runtime gates. G-MIGRATION includes the synthetic compatibility exercise even for a fresh local product; a real migrated organization additionally requires its reviewed private parity and writer evidence. G-IDENTITY uses the local integration provider for the synthetic product and the actual provider before a live pilot. These commands execute the local runtime tooling. Real provider and rollout proofs remain stage-specific. Each gate records actual commands, exit codes, revision, environment and artifacts through [Completion contract](COMPLETION_CONTRACT.md). A material change reruns affected gates; earlier reports cannot certify changed behavior.
+
+## Static architecture and complexity protection
+
+`make lint` runs [check_architecture.py](../scripts/check_architecture.py) with the locked backend Python environment. It inventories every Python source under `backend/src` and `identity_provider`, rejects missing or linked source trees, and fails on unreadable files, invalid syntax or escaping relative imports. Radon measures every function, method and nested callable; cyclomatic complexity above 10 fails. The output records the tool version, checked file/callable counts and maximum score in the release gate log. Class aggregate scores are excluded because the limit applies to individual callables.
+
+The AST check includes imports inside functions, aliases and relative imports. Domain imports are limited to its own package and an explicit allowlist of standard-library value and calculation modules; operating-system, filesystem, process, network and SQL infrastructure are excluded. It cannot depend on third-party providers, configuration or application services. HTTP adapters may use services and HTTP/domain boundary helpers; direct persistence, migration/bootstrap, journal, worker and provider-effect infrastructure belongs outside the handlers. Shared transaction helpers expose only `expected_version` to HTTP adapters. Known reexported transaction effects and explicit dynamic imports are rejected. Services retain their current SQLAlchemy and transport-encoding dependencies; this check does not impose a new repository hierarchy.
+
+These are deterministic source constraints, not proof of semantic purity, runtime reflection safety, transitive write ownership or absence of duplicated business rules. Cognitive complexity, duplication, coupling, cohesion, Maintainability Index and estimated debt still require contextual review and a reproducible baseline before numerical claims. Negative fixtures in [test_architecture.py](../scripts/tests/test_architecture.py) exercise prohibited dependencies, hidden nested complexity and incomplete inventories. TypeScript uses its strict compiler configuration; Python uses the committed mypy settings (`check_untyped_defs`, `no_implicit_optional`, `warn_unused_ignores`) with missing third-party stubs ignored, rather than claiming mypy strict mode.
 
 ## Completion standard
 

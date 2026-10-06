@@ -18,7 +18,7 @@ The local product includes a React workspace, FastAPI application, PostgreSQL mi
 | Your goal | Recommended path | What to inspect |
 | --- | --- | --- |
 | Use the product | [Run locally](#run-locally) → [product tour](#product-tour) | Invite a recipient, grant a resource, use it and revoke access |
-| Review the solution | [Architecture](#architecture) → [data model](#data-model) → [contracts](#contracts) | Boundaries, invariants, transactions and ownership |
+| Review the solution | [Solution review](docs/SOLUTION_REVIEW.md) → [architecture](#architecture) → [data model](#data-model) → [contracts](#contracts) | Required outcomes, boundaries, invariants, transactions and ownership |
 | Present the delivery | [Presentation guide](docs/REVIEW_GUIDE.pt-BR.md) → [guided demonstration](docs/DEMO.pt-BR.md) | An 18-minute narrative and a 15–20-minute product demonstration, in Portuguese |
 | Examine quality | [Verification](#verification) → [validation guide](docs/VALIDATION.md) | Real gates, named scenario evidence, failure injection and proof boundaries |
 | Operate or extend it | [Operations](docs/OPERATIONS.md) → [implementation map](docs/IMPLEMENTATION_MAP.md) → [engineering decisions](docs/DECISION_MATRIX.md) | Recovery, module ownership and the reasons behind the design |
@@ -120,6 +120,8 @@ The gallery covers the principal journeys and responsive layouts. Select a capti
 
 The browser gate separately verifies keyboard journeys at **375, 768 and 1440 pixels**, delayed responses across organization switches, panel recovery, competing edits and automated accessibility scans. Screenshots record visible states; the executed tests supply behavioral evidence.
 
+Run `make screenshots` to capture fourteen fresh states in an owned temporary deployment. [Capture instructions](docs/screenshots/README.md) describe prerequisites, safe cleanup, artifact hashes and visual review before promotion.
+
 ## Architecture
 
 A **modular monolith and one primary PostgreSQL authority** keep policy decisions, grants, receipts and audit events inside explicit transaction boundaries. The same versioned backend image runs the HTTP application and a separate outbox worker. Identity, delivery and recovery journals have external ports with local adapters for the reproducible release.
@@ -137,6 +139,20 @@ A **modular monolith and one primary PostgreSQL authority** keep policy decision
 [Full-size architecture](docs/diagrams/container.svg) · [Editable source](docs/diagrams/container.mmd)
 
 The diagrams show logical boundaries, including separately owned live adapter ports. The local deployment uses the five services listed above; an independently durable production journal remains a live integration requirement.
+
+### Implemented components
+
+![Actual HTTP adapters, cohesive application services, pure policy and shared transaction helpers](docs/diagrams/components.svg)
+
+[Full-size components](docs/diagrams/components.svg) · [Editable source](docs/diagrams/components.mmd) · [Workspace component contracts](docs/COMPONENT_DESIGN.md)
+
+### Local deployment
+
+![Five running services, initialization, maintenance, process and credential boundaries, and local volumes](docs/diagrams/deployment.svg)
+
+[Full-size deployment](docs/diagrams/deployment.svg) · [Editable source](docs/diagrams/deployment.mmd)
+
+The API uses two processes in one container. Database-backed application sessions are separate from the local provider's ephemeral signing keys and authorization codes. Journal and mailbox storage occupy dedicated volumes on the same host; these are local recovery boundaries.
 
 | Layer | Implementation | Responsibility |
 | --- | --- | --- |
@@ -169,7 +185,7 @@ The canonical SQL defines **21 domain/supporting tables**. Runtime migrations al
 
 [Full-size entity relationships](docs/diagrams/er.svg) · [Editable source](docs/diagrams/er.mmd)
 
-The ER view highlights core relationships and selected columns. [schema.sql](specs/contracts/schema.sql) specifies the complete physical model, constraints and supporting tables; [DATA_MODEL.md](docs/DATA_MODEL.md) explains its invariants and lifecycle rules.
+The ER view includes all 21 tables with selected actual columns. [schema.sql](specs/contracts/schema.sql) specifies every column, constraint, index and provenance relationship; [DATA_MODEL.md](docs/DATA_MODEL.md) explains the split between database invariants and application protocols.
 
 | Boundary | Invariant |
 | --- | --- |
@@ -211,7 +227,7 @@ The ER view highlights core relationships and selected columns. [schema.sql](spe
 
 </details>
 
-All six diagram sources and rendered SVGs are indexed in [diagrams/README.md](docs/diagrams/README.md). SVGs remain legible when enlarged.
+All eight diagram sources and rendered SVGs are indexed in [diagrams/README.md](docs/diagrams/README.md), with pinned rendering instructions. Open the complete ER at full size to inspect supporting relationships.
 
 ## Contracts
 
@@ -300,7 +316,7 @@ specs/features/      Acceptance scenarios and invariants
 specs/contracts/     Independent HTTP, SQL, policy and operating contracts
 docs/                Product, architecture, execution, operating and learning material
 docs/adr/            Recorded architecture decisions
-docs/diagrams/       Six editable Mermaid sources and rendered SVGs
+docs/diagrams/       Eight editable Mermaid sources and rendered SVGs
 docs/screenshots/    Fourteen captures from the running workspace
 scripts/             Setup, validators, audits, rehearsals and release packaging
 compose.yaml         Owned local service deployment
@@ -313,10 +329,10 @@ Makefile             Shared developer and release entry points
 | --- | --- |
 | Product and delivery | [Product](docs/PRODUCT.md), [requirements](docs/REQUIREMENTS.md), [executive proposal](docs/PROPOSTA.pt-BR.md), [local scope](docs/LOCAL_PRODUCT.md) |
 | Architecture and correctness | [Architecture](docs/ARCHITECTURE.md), [domain design](docs/DOMAIN_DESIGN.md), [data model](docs/DATA_MODEL.md), [transaction correctness](docs/DISTRIBUTED_CORRECTNESS.md), [decision matrix](docs/DECISION_MATRIX.md) |
-| Interface and onboarding | [UX](docs/UX.md), [API](docs/API.md), [identity and delivery](docs/IDENTITY_AND_DELIVERY.md), [demonstration](docs/DEMO.pt-BR.md) |
+| Interface and onboarding | [Component design](docs/COMPONENT_DESIGN.md), [UX](docs/UX.md), [API](docs/API.md), [identity and delivery](docs/IDENTITY_AND_DELIVERY.md), [demonstration](docs/DEMO.pt-BR.md) |
 | Migration and execution | [Diagnosis](docs/DIAGNOSIS.md), [migration](docs/MIGRATION.md), [delivery plan](docs/DELIVERY_PLAN.md), [product alignment](docs/PRODUCT_ALIGNMENT.pt-BR.md) |
 | Quality and operation | [Validation](docs/VALIDATION.md), [quality](docs/QUALITY.md), [security](docs/SECURITY.md), [operations](docs/OPERATIONS.md), [capacity](docs/CAPACITY_PLAN.md), [reliability](docs/RELIABILITY_DESIGN.md), [delivery system](docs/DELIVERY_SYSTEM.md) |
-| Learning and review | [Presentation guide](docs/REVIEW_GUIDE.pt-BR.md), [learning guide](docs/LEARNING_GUIDE.pt-BR.md), [engineering standards](docs/ENGINEERING_STANDARDS.md), [completion contract](docs/COMPLETION_CONTRACT.md) |
+| Learning and review | [Solution coverage review](docs/SOLUTION_REVIEW.md), [presentation guide](docs/REVIEW_GUIDE.pt-BR.md), [learning guide](docs/LEARNING_GUIDE.pt-BR.md), [engineering standards](docs/ENGINEERING_STANDARDS.md), [completion contract](docs/COMPLETION_CONTRACT.md) |
 
 Technical documentation is in English; presentation, demonstration and learning material are available in Portuguese. Contract and specification ownership are stated in [AGENTS.md](AGENTS.md) and [specs/README.md](specs/README.md).
 

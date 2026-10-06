@@ -1,36 +1,44 @@
 # Alinhamento de produto para o Scopegate
 
-O Scopegate organiza acesso por organização, projeto e recurso publicado. A proposta é conter os defeitos atuais, validar uma nova fronteira de acesso em um fluxo completo e ampliar a migração somente quando o acesso aprovado estiver preservado.
+O Scopegate organiza acesso por organização, projeto e recurso publicado. A entrega local implementa o fluxo completo e os ensaios com dados sintéticos; uma migração real exige decisões comerciais, inventário privado e integrações próprias.
 
-O conteúdo abaixo está pronto para revisão e adaptação em uma conversa com Produto, Operações e a equipe técnica. É um rascunho de mensagem; não foi enviado.
+O texto abaixo é uma mensagem para revisão com Produto e Operações. Não foi enviado. As estimativas descrevem premissas de planejamento; não representam prazo imposto nem tempo medido desta implementação.
 
 ## Mensagem para alinhamento
 
-Pessoal, proponho começar estabilizando os fluxos que hoje falham e reconstruir apenas a fronteira de acesso. O primeiro passo trata metadados ausentes, recursos indisponíveis, busca no escopo correto e alterações de recursos em uma transação. Vamos registrar o estado antes e depois de cada reprodução: uma resposta 400, isoladamente, não comprova que os dados da organização foram alterados.
+Pessoal, proponho estabilizar os fluxos de acesso e substituir sua fronteira por etapas. Vamos reproduzir metadados ausentes, recursos indisponíveis, busca e alterações de concessões, registrando o estado persistido antes e depois. Uma resposta 400, isoladamente, não prova perda de dados.
 
-O piloto terá um fluxo completo: convite com identidade verificada e recursos explicitamente selecionados, associação à organização e concessões confirmadas na mesma transação, uso autorizado, revogação e histórico de auditoria. Uma pessoa da equipe interna também será verificada em duas organizações para provar isolamento. Essa pessoa terá associação e validade próprias em cada organização, sem acesso global implícito.
+Assumo três decisões técnicas: um monólito modular com PostgreSQL como autoridade; identidade, associação, direito do projeto e concessão individual separados; e comandos atômicos, auditáveis e reversíveis, com controle de concorrência. O papel de gestor permite administrar acesso, mas não consumir conteúdo sem concessão explícita. Publicação e tradução não concedem permissão.
 
-Precisamos fechar três decisões de Produto antes de migrar o piloto: quais solicitações podem receber aprovação automática; qual fonte determina os recursos contratados por organização e projeto; e quem decide as exceções históricas que não permitem concluir o acesso com segurança. Enquanto essas regras estiverem abertas, não haverá aprovação automática nem migração dos registros afetados.
+A entrega local demonstra convite verificado, aceitação, uso, revogação, auditoria e isolamento de uma pessoa interna em duas organizações. Também ensaia migração, comparação de acesso e retorno de versão com dados sintéticos. Esses resultados não autorizam uma mudança em clientes reais.
 
-Minha recomendação é que o papel de gestor permita administrar acesso, mas não dê acesso ao conteúdo. Para consumir um recurso, qualquer pessoa precisará de associação ativa, recurso disponível naquele projeto e concessão individual explícita. A publicação e as traduções continuam sob responsabilidade do catálogo, com identidade estável independente do título.
+Preciso de Produto para definir a fonte dos recursos contratados, os critérios de aprovação automática e o responsável por cada exceção histórica. Operações confirma identidade, validade das associações internas, proprietários dos consumidores e recuperação. Registros ambíguos continuam bloqueados; não serão resolvidos concedendo acesso amplo.
 
-Para planejar, considero três engenheiros com responsabilidades no produto atual e disponibilidade conjunta de 1,5 pessoa em tempo integral. Com essa premissa, a estabilização fica estimada em 1 a 2 semanas, o primeiro fluxo completo em 3 a 5 semanas e a observação do piloto em 1 a 2 semanas. O produto público completo, incluindo os fluxos de gestão, a migração, a operação e a qualidade de P0 a P2, tem estimativa inicial de 44 a 72 dias de engenharia, com faixa de planejamento de 8 a 13 semanas. São estimativas dependentes das integrações e decisões, sem prazo imposto; vamos revisá-las após as primeiras reproduções e a leitura dos dados. Grupos adicionais de migração real serão estimados conforme o inventário.
+Planejamos por capacidade disponível, sem comprimir verificações para cumprir uma data. A preparação sintética é separada da observação de um piloto real, cujo esforço e janela serão definidos após a descoberta privada. Antes de liberar um grupo real, exigirei comparação aprovada, integrações verificadas e recuperação ensaiada. Qualquer ampliação indevida, perda de acesso aprovado ou falha de autorização interrompe a expansão. Produto decide as regras comerciais; a liderança técnica responde pelas invariantes e evidências; Operações executa a transição controlada.
 
-As metas propostas para o piloto são zero ampliação de acesso sem aprovação, zero perda de acesso aprovado e nenhuma falha crítica de autorização durante a observação. Também vamos medir incidentes e tempo de entrada de usuários. A redução de 30% no tempo mediano de processamento é uma meta inicial a confirmar depois de medir a referência, separando espera por aprovação do tempo do sistema.
+## Decisões técnicas que assumo
 
-A migração começará com uma simulação que não altera acesso ativo. Cada diferença terá motivo, responsável e decisão registrada. Só um grupo de organizações reconciliado, com comparação de acesso aprovada e retorno ensaiado, poderá entrar no piloto. Depois da mudança, a nova fronteira continua sendo a autoridade de acesso, inclusive em um retorno de versão da aplicação. Revogações não podem ser apagadas por um snapshot antigo. Se houver divergência ou falha de autorização, a expansão para e o problema fica contido.
-
-O resultado esperado é uma fronteira de acesso menor, verificável e fácil de operar. Não precisamos substituir o produto inteiro para provar esse resultado. Produto decide as regras comerciais e as exceções; a liderança técnica responde pelas invariantes, pela ordem de execução e pelas evidências de qualidade; Operações responde pela configuração, pelas associações temporárias da equipe interna e pela execução da migração.
-
-## Decisões e responsáveis
-
-| Decisão | Responsável | Condição para o piloto |
+| Decisão | Razão e consequência | Evidência esperada |
 | --- | --- | --- |
-| Política de aprovação automática | Produto | Critérios explícitos; pendências continuam sem aprovação automática |
-| Fonte dos recursos contratados | Produto com responsável pelo catálogo | Organização e projeto reconciliados com a fonte autorizada |
-| Exceções históricas de acesso | Produto com Operações | Resolução justificada de cada exceção do grupo piloto |
-| Atribuição e validade da equipe interna | Operações | Associação explícita por organização, com expiração obrigatória |
-| Identidade e publicação | Responsáveis pelas integrações | Adaptador OIDC real e contrato do catálogo verificados |
-| Condições de liberação e retorno | Liderança técnica com Operações | Comparação de acesso, restauração e retorno ensaiados |
+| Monólito modular e uma autoridade de acesso | Uma equipe pequena mantém transações e ordem de bloqueios explícitas, sem coordenação distribuída desnecessária | [Arquitetura](ARCHITECTURE.md), implantação e fronteiras de módulos |
+| Associações e concessões normalizadas por organização | Uma alteração preserva as demais organizações; títulos, papéis e publicação não viram permissões | [Modelo](DATA_MODEL.md), restrições compostas e testes negativos |
+| Comandos atômicos com revisão, recibo e auditoria | Falha muda nada; conflito preserva intenção; retorno de versão preserva revogações | [Correção concorrente](DISTRIBUTED_CORRECTNESS.md), [migração](MIGRATION.md) e ensaios de recuperação |
 
-O detalhe de escopo está em [produto](PRODUCT.md); estimativas e condições de execução estão no [plano de entrega](DELIVERY_PLAN.md). A [migração](MIGRATION.md) descreve como reconciliar, liberar e retornar sem resolver dúvidas por permissões amplas.
+## Decisões que escalo
+
+| Decisão | Responsável | Regra até a resolução |
+| --- | --- | --- |
+| Fonte dos recursos contratados | Produto com responsável pelo catálogo | Nenhuma concessão inferida de nomes, domínios ou dados ambíguos |
+| Aprovação automática | Produto | Desativada enquanto critérios não forem explícitos |
+| Exceções históricas de acesso | Produto com Operações | Registro exige responsável, justificativa e comparação; grupo afetado permanece bloqueado |
+| Atribuição e validade da equipe interna | Operações | Associação explícita por organização e expiração obrigatória |
+| Identidade e entrega reais | Responsáveis pelas integrações | Adaptadores locais não certificam provedores reais |
+| Liberação e retorno do grupo real | Liderança técnica com Operações | Paridade, responsáveis pelos escritores/consumidores e recuperação verificadas |
+
+## Premissas e indicadores
+
+O [plano de entrega](DELIVERY_PLAN.md) assume três engenheiros com disponibilidade conjunta de 1,5 pessoa em tempo integral. As faixas históricas são 1–2 semanas para estabilização, 3–5 para o primeiro fluxo e 1–2 para **preparação do ensaio sintético**, dentro de 44–72 dias de engenharia e uma faixa total de 8–13 semanas. O primeiro piloto real T13 e novos grupos são trabalho adicional, a estimar após a descoberta privada; sua observação exige uma janela aprovada e uso representativo.
+
+As metas propostas para um piloto são zero ampliação não aprovada, zero perda de acesso aprovado e nenhuma falha crítica de autorização. A redução de 30% no tempo mediano de processamento depende de medir uma referência e separar espera por aprovação do tempo do sistema. Esses indicadores não são resultados já alcançados nem compromissos comerciais.
+
+A [proposta](PROPOSTA.pt-BR.md) organiza as cinco entregas. [Requisitos](REQUIREMENTS.md) e [especificações](../specs/README.md) ligam decisões a comportamento e evidências. A entrega local e as etapas reais têm limites explícitos em [LOCAL_PRODUCT.md](LOCAL_PRODUCT.md).

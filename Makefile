@@ -18,6 +18,10 @@ check-validators:
 	$(PYTHON) scripts/check_validator_behaviour.py
 
 .PHONY: setup deps up down bootstrap dev lint typecheck test-unit test-integration check-contracts test-browser test-migration test-identity build smoke check-runtime test-performance test-security test-operations verify package
+.PHONY: screenshots
+screenshots:
+	$(PYTHON) scripts/capture_workspace.py
+
 setup:
 	$(PYTHON) scripts/setup_local.py
 
@@ -39,6 +43,7 @@ dev: deps
 
 lint:
 	$(BACKEND)/ruff check backend/src backend/tests identity_provider scripts
+	$(BACKEND)/python scripts/check_architecture.py
 	npm --prefix frontend run lint
 
 typecheck:
@@ -46,7 +51,7 @@ typecheck:
 	npm --prefix frontend run typecheck
 
 test-unit:
-	$(BACKEND)/pytest backend/tests/test_policy.py backend/tests/test_cli.py backend/tests/test_runtime.py scripts/tests -m 'not integration' -q
+	$(BACKEND)/pytest backend/tests/test_policy.py backend/tests/test_cli.py backend/tests/test_runtime.py backend/tests/test_tracing.py scripts/tests -m 'not integration' -q
 	$(BACKEND)/python scripts/check_policy_mutations.py
 	npm --prefix frontend test -- --reporter=default --reporter=json --outputFile=$${SCOPEGATE_VITEST_RESULTS:-../artifacts/unit/results.json}
 
@@ -83,7 +88,7 @@ test-security:
 	$(BACKEND)/python scripts/audit_dependencies.py
 
 test-operations:
-	$(BACKEND)/pytest backend/tests/test_delivery.py backend/tests/test_operations.py backend/tests/test_alerts.py backend/tests/test_runtime.py -q
+	$(BACKEND)/pytest backend/tests/test_delivery.py backend/tests/test_operations.py backend/tests/test_alerts.py backend/tests/test_runtime.py backend/tests/test_tracing.py -q
 	$(BACKEND)/python scripts/rehearse_worker.py
 	$(BACKEND)/python scripts/rehearse_proxy.py
 	docker compose --profile maintenance run --rm --build operations --help

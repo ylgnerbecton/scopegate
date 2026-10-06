@@ -1,29 +1,32 @@
 flowchart TB
-    browser[Browser\nReact TypeScript Vite\nTanStack Query]
-    identity[OIDC Provider]
-    publisher[Catalog Publisher\nScoped machine credential]
-    delivery[Delivery Adapter]
-    journal[Independent Durable Journal\nPrivate live host adapter]
-
-    subgraph application[One versioned application]
-        http[FastAPI HTTP process\nPython 3.12]
-        modules[Identity Organizations Access\nInvitations Catalog Reports Audit]
-        policy[Central policy\nScoped queries and use cases]
-        persistence[SQLAlchemy 2 and psycopg 3\nOne service owned unit of work]
-        worker[Outbox worker process]
-        migration[Alembic and migration use cases]
+    accTitle: Scopegate logical application boundaries
+    accDescr: A modular application owns HTTP, use cases and background processes around one primary database. Local adapters are implemented; live provider and host integration remain separate.
+    browser[React workspace<br/>Typed HTTP and scoped query cache]
+    subgraph app[One versioned application boundary]
+        http[FastAPI HTTP transport<br/>Session or distinct machine principal]
+        services[Cohesive application services<br/>Identity · access · enrollment · catalog · migration]
+        policy[Pure resource-use policy<br/>Immutable facts and decision time]
+        transaction[SQLAlchemy Core transaction boundary<br/>Ordered locks · receipts · audit]
+        worker[Separate delivery worker process<br/>Lease claim and acknowledgment]
+        cli[Opt-in operations CLI<br/>Reviewed migration and recovery]
+        http --> services
+        services --> policy
+        services --> transaction
+        cli --> services
+        worker --> transaction
     end
-
-    db[(PostgreSQL 18\nDomain state Sessions Audit\nOutbox Migration ledger)]
-    browser -->|Same origin session and typed HTTP| http
-    http --> modules
-    modules --> policy
-    policy --> persistence
-    persistence -->|Transactions and composite constraints| db
-    http -->|Authorization Code and PKCE| identity
-    publisher -->|Catalog operation allowlist| http
-    modules -->|Durable prepare before access transaction| journal
-    modules -->|Outcome after commit and release| journal
-    worker -->|Claim and update delivery records| db
-    worker -->|Postcommit delivery| delivery
-    migration -->|Versioned DDL and resumable data mapping| db
+    database[(Primary PostgreSQL<br/>Authority · audit · outbox · migration)]
+    identity[Independent local OIDC<br/>Verified provider claims]
+    mailbox[Local mailbox adapter<br/>Postcommit delivery]
+    journal[Local durable journal adapter<br/>Intent before transaction · outcome after]
+    browser -->|Same-origin cookie and CSRF| http
+    http -->|Configured OIDC exchange| identity
+    transaction -->|One service-owned commit| database
+    worker -->|Outside database transaction| mailbox
+    services -->|Outside domain locks| journal
+    classDef core fill:#f0fdfa,stroke:#0f766e,color:#134e4a;
+    classDef adapter fill:#eff6ff,stroke:#2563eb,color:#172554;
+    classDef authority fill:#0f172a,stroke:#0f172a,color:#ffffff;
+    class http,services,policy,transaction,worker,cli core;
+    class browser,identity,mailbox,journal adapter;
+    class database authority;

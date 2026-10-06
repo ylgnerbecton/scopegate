@@ -5,6 +5,7 @@ import os
 import signal
 import threading
 
+from scopegate import telemetry
 from scopegate.config import get_settings
 from scopegate.db import get_engine
 from scopegate.services.delivery import process_batch, purge
@@ -12,6 +13,7 @@ from scopegate.services.delivery import process_batch, purge
 
 def main() -> None:
     get_settings()
+    telemetry.initialize()
     stopped = threading.Event()
     signal.signal(signal.SIGTERM, lambda *_: stopped.set())
     signal.signal(signal.SIGINT, lambda *_: stopped.set())
@@ -28,6 +30,7 @@ def main() -> None:
             logger.error("delivery_cycle_failed")
         stopped.wait(1)
     get_engine().dispose()
+    telemetry.flush()
 
 
 if __name__ == "__main__":

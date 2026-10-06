@@ -1,4 +1,6 @@
 sequenceDiagram
+    accTitle: Scopegate ordered protected use and grant revocation
+    accDescr: Shared organization admission can finish before waiting revocation, later admission reads revoked state after an exclusive mutation. Policy statements and database time follow lock waits.
     autonumber
     participant Use as Critical Report Use
     participant Revoke as Grant Revocation
@@ -11,11 +13,11 @@ sequenceDiagram
     Revoke->>DB: Request exclusive organization transaction lock
     Note over Revoke,DB: Waits while earlier critical use holds shared lock
     Use->>DB: Validate report references and create durable output
-    Use->>DB: Append audit and commit
+    Use->>DB: Append audit and receipt, commit
     DB-->>Revoke: Exclusive organization lock acquired
-    Revoke->>DB: Lock membership and check expected version
-    Revoke->>DB: New SQL statement for clock and management policy
-    Revoke->>DB: Revoke grant by difference and append audit
+    Revoke->>DB: Fresh management authority and receipt mutex/read
+    Revoke->>DB: New command: lock membership and check expected version
+    Revoke->>DB: Revoke exact grant, advance version, append audit and receipt
     Revoke->>DB: Commit
 
     Use->>DB: New transaction with ordered resource locks
@@ -24,3 +26,4 @@ sequenceDiagram
     DB-->>Use: Grant is revoked
     Use->>DB: Roll back without creating output
     Note over Use,DB: Publisher archival takes resource FOR UPDATE.<br/>All waits are bounded and expiration is rechecked after waits.<br/>Already committed output precedes the revocation.
+    Note over Use,DB: Journal intent precedes the transaction.<br/>Outcome follows connection release.<br/>Uncertainty retries the same command key.

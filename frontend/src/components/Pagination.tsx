@@ -6,26 +6,32 @@ export function Pagination({
   hasNext,
   next,
   previous,
+  busy = false,
+  label = 'Results pages',
 }: {
   page: number;
   hasNext: boolean;
   next: () => void;
   previous: () => void;
+  busy?: boolean;
+  label?: string;
 }) {
   if (page === 1 && !hasNext) return null;
   return (
-    <div className="pagination">
-      <span>Page {page} · bounded to 25 records</span>
+    <nav className="pagination" aria-label={label} aria-busy={busy || undefined}>
+      <span role="status" aria-live="polite" aria-atomic="true">
+        Page {page} · Up to 25 results
+      </span>
       <div>
-        <Button className="button-ghost" disabled={page === 1} onClick={previous}>
+        <Button className="button-ghost" disabled={page === 1 || busy} onClick={previous}>
           <ArrowLeft size={15} />
           Previous
         </Button>
-        <Button className="button-ghost" disabled={!hasNext} onClick={next}>
+        <Button className="button-ghost" disabled={!hasNext || busy} onClick={next}>
           Next
           <ArrowRight size={15} />
         </Button>
       </div>
-    </div>
+    </nav>
   );
 }

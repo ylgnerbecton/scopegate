@@ -1,17 +1,19 @@
 flowchart TD
-    expand[Expand schema with Alembic\nKeep existing writer canonical]
-    backfill[Resumable backfill\nLedger and reviewed mapping]
+    accTitle: Scopegate staged migration and compatible rollback
+    accDescr: Local fixtures rehearse these phases. Real baseline, writers, consumers, approvals and monitored cohorts are required separately before live cutover.
+    expand[Expand schema with Alembic<br/>Keep existing writer canonical]
+    backfill[Resumable backfill<br/>Ledger and reviewed mapping]
     compare[Compare relationships and policy decisions]
     review{Equivalent or reviewed restriction?}
-    quarantine[Quarantine ambiguity\nCorrect mapping and replay batch]
-    shadow[Shadow reads for selected organization\nServe canonical existing decisions]
+    quarantine[Quarantine ambiguity<br/>Correct mapping and replay batch]
+    shadow[Shadow reads for selected organization<br/>Serve canonical existing decisions]
     fence[Fence organization legacy writes]
     delta[Apply final delta and verify revocations]
     cutover[Switch organization to canonical target]
     observe[Observe tenant pilot and audit]
-    rollback[Target compatible application rollback\nKeep target schema and legacy write fence]
-    contract[Contract after verified window\nRemove obsolete reads and schema]
-    engine[Separate database engine change\nPostgreSQL 15 baseline to PostgreSQL 18\nIndependent backup and restore rehearsal]
+    rollback[Target compatible application rollback<br/>Keep target schema and legacy write fence]
+    contract[Contract after verified window<br/>Remove obsolete reads and schema]
+    engine[Separate database engine change<br/>PostgreSQL 15 baseline to PostgreSQL 18<br/>Independent backup and restore rehearsal]
 
     expand --> backfill --> compare --> review
     review -->|No| quarantine --> backfill

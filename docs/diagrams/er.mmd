@@ -1,4 +1,6 @@
 erDiagram
+    accTitle: Scopegate complete entity inventory
+    accDescr: All 21 domain and supporting tables with selected columns and primary relationships. Canonical SQL owns complete composite keys, provenance references and indexes.
     USERS {
         uuid id PK
         text issuer
@@ -7,11 +9,14 @@ erDiagram
     }
     ORGANIZATIONS {
         uuid id PK
-        text name
+        bigint lock_key UK
+        text status
+        text access_mode
     }
     PROJECTS {
         uuid id PK
         uuid organization_id FK
+        text status
     }
     MEMBERSHIPS {
         uuid id PK
@@ -67,6 +72,7 @@ erDiagram
     REPORT_CONFIGS {
         uuid id PK
         uuid organization_id FK
+        uuid project_id FK
     }
     REPORT_RESOURCE_REFS {
         uuid organization_id PK,FK
@@ -129,6 +135,33 @@ erDiagram
         text state
     }
 
+    MIGRATION_CONTROLS {
+        uuid organization_id PK,FK
+        uuid current_run_id FK
+        bigint writer_epoch
+        boolean write_fenced
+        bigint source_high_watermark
+        bigint applied_high_watermark
+        text baseline_revision
+    }
+    MIGRATION_DECISIONS {
+        uuid run_id PK,FK
+        uuid organization_id PK,FK
+        text principal_key PK
+        text project_key PK
+        text resource_key PK
+        text action PK
+        boolean baseline_allowed
+        boolean target_allowed
+    }
+    CATALOG_RECEIPTS {
+        text actor_key PK
+        text external_key PK,FK
+        text idempotency_key PK
+        text request_hash
+        timestamptz expires_at
+    }
+
     USERS ||--o{ MEMBERSHIPS : joins
     USERS ||--o{ SESSIONS : authenticates
     ORGANIZATIONS ||--o{ PROJECTS : owns
@@ -139,6 +172,11 @@ erDiagram
     ORGANIZATIONS |o--o{ MIGRATION_LEDGER : maps
     ORGANIZATIONS ||--o{ COMMAND_RECEIPTS : scopes
     MIGRATION_RUNS ||--o{ MIGRATION_LEDGER : checkpoints
+    ORGANIZATIONS ||--o| MIGRATION_CONTROLS : controls
+    MIGRATION_RUNS |o--o{ MIGRATION_CONTROLS : current_run
+    MIGRATION_RUNS ||--o{ MIGRATION_DECISIONS : compares
+    ORGANIZATIONS ||--o{ MIGRATION_DECISIONS : scopes
+    RESOURCES ||--o{ CATALOG_RECEIPTS : publisher_retry
     PROJECTS ||--o{ PROJECT_RESOURCES : entitles
     RESOURCES ||--o{ PROJECT_RESOURCES : available
     RESOURCES ||--o{ RESOURCE_LOCALIZATIONS : localizes
@@ -149,8 +187,10 @@ erDiagram
     REPORT_CONFIGS ||--o{ REPORT_RESOURCE_REFS : references
     PROJECT_RESOURCES ||--o{ REPORT_RESOURCE_REFS : constrains
     INVITATIONS |o--o{ OUTBOX_MESSAGES : delivers
+    ORGANIZATIONS ||--o{ OUTBOX_MESSAGES : scopes
 
     %% Composite uniqueness: users issuer and subject; memberships organization and user.
     %% Tenant foreign keys include organization even when the diagram displays separate fields.
     %% Staff expiration is required. Resource deletion is restricted. Expired invitations are derived.
-    %% The schema specification is authoritative for column names, constraints and supporting tables.
+    %% All 21 domain/supporting tables are included; selected columns are shown.
+    %% Some actor/reviewer provenance edges are omitted for legibility; canonical SQL is complete.

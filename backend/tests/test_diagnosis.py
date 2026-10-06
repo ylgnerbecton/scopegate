@@ -57,6 +57,26 @@ def test_null_organization_metadata_has_bounded_safe_defaults(compatibility_conn
 
 
 @pytest.mark.integration
+def test_absent_organization_is_not_found_without_mutating_existing_metadata(compatibility_conn):
+    conn, existing_id, absent_id = compatibility_conn, str(uuid4()), str(uuid4())
+    with conn.begin():
+        conn.execute(
+            text("INSERT INTO compat_organizations(id,name,resource_keys,locale) VALUES(:id,'Cedar','growth','pt')"),
+            {"id": existing_id},
+        )
+        before = conn.execute(text("SELECT id,name,resource_keys,locale FROM compat_organizations")).all()
+    with pytest.raises(AppError) as failure:
+        with conn.begin():
+            compatibility.organization_metadata(conn, absent_id)
+    assert failure.value.status == 404
+    assert failure.value.code == "organization_not_found"
+    with conn.begin():
+        assert conn.execute(text("SELECT id,name,resource_keys,locale FROM compat_organizations")).all() == before
+        assert conn.execute(text("SELECT count(*) FROM compat_users")).scalar_one() == 0
+        assert conn.execute(text("SELECT count(*) FROM compat_assignments")).scalar_one() == 0
+
+
+@pytest.mark.integration
 def test_approval_rejection_precedes_any_organization_or_user_write(compatibility_conn):
     conn, existing_id, requested_id = compatibility_conn, str(uuid4()), str(uuid4())
     with conn.begin():

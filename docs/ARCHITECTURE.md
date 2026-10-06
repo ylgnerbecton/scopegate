@@ -1,129 +1,142 @@
 # Scopegate Architecture
 
-Scopegate gives organizations explicit control over who can use each resource in a project. The first implementation uses one modular application and one PostgreSQL database so that access changes, invitation acceptance, and audit records share a transaction boundary. The architecture is accepted for implementation; runtime behavior must satisfy the release gates in [Quality](QUALITY.md).
+Scopegate is an implemented local organization access workspace. A modular monolith and one primary PostgreSQL database keep permission changes, single-use invitation acceptance, command receipts and audit evidence in the same transaction. A separate process delivers committed invitations. The reproducible deployment includes local identity, mailbox and recovery journal adapters; live provider and host integration remain outside this release.
 
-## Product boundaries
+Read this document for system boundaries and operating behavior, [Domain design](DOMAIN_DESIGN.md) for source responsibilities, [Data model](DATA_MODEL.md) for persistence and [Transaction correctness](DISTRIBUTED_CORRECTNESS.md) for exact race schedules. [Current release evidence](../specs/implementation-evidence.json) establishes which gates passed for a revision; this document does not replace that proof.
 
-An organization is the tenant boundary. A project belongs to exactly one organization. Resources form a global catalog maintained by a Catalog Publisher; a resource becomes available to an organization only through an active project entitlement. An active membership and an explicit active resource grant are both necessary to consume that resource. Access managers manage access within existing project entitlements; their role does not grant consumption rights.
+## Architecture views and authority
 
-Customer and staff memberships use the same authorization rules. Staff access has a required expiration and is assigned through a controlled platform operations workflow. There is no global administrator bypass. Customer endpoints cannot enumerate or modify the global catalog. The Publisher uses a scoped machine credential with allowlisted operations, rather than a customer session.
-
-## Runtime and deployment
-
-| Component | Decision | Responsibility |
+| View | Question it answers | Source of truth |
 | --- | --- | --- |
-| Web interface | React, TypeScript, Vite, TanStack Query | Organization selection, scoped resource discovery, invitations and access management |
-| Application | Python 3.12, FastAPI | HTTP contract, session handling, use cases, policy enforcement and background delivery |
-| Persistence | SQLAlchemy 2, psycopg 3, Alembic | Typed persistence, transaction ownership and ordered schema changes |
-| Database | PostgreSQL 18 for the new product | Tenant relationships, constraints, authorization state, audit and outbox |
-| Identity provider | OpenID Connect provider | Authentication and verified identity claims |
-| Delivery adapter | Database outbox and replaceable delivery port | Postcommit invitation delivery with bounded retries |
+| [System context](diagrams/context.svg) | Who uses the product, and which authorities remain separate? | [Product](PRODUCT.md), [security](SECURITY.md) |
+| [Logical application boundaries](diagrams/container.svg) | What belongs to the application, persistence and integration ports? | This document and [domain design](DOMAIN_DESIGN.md) |
+| [Implemented components](diagrams/components.svg) | Which source modules validate, decide, transact and integrate? | [Implementation map](IMPLEMENTATION_MAP.md) and linked source below |
+| [Local deployment](diagrams/deployment.svg) | Which processes, ports, volumes and credentials actually run? | [compose.yaml](../compose.yaml), [runtime configuration](../backend/src/scopegate/config.py) |
+| [Entity relationships](diagrams/er.svg) | Which records own identity, access, evidence and recovery state? | [Canonical SQL](../specs/contracts/schema.sql), [Alembic migration](../backend/migrations/versions/0001_target.py) |
+| [Invitation](diagrams/invitation-sequence.svg), [revocation](diagrams/grant-revocation.svg), [migration](diagrams/migration-phases.svg) | How do critical transitions order work and handle uncertainty? | Owning services and contracts |
 
-The same application image can run the HTTP process and an outbox worker process. They share the database and versioned application modules. Redis, a message broker, an external policy service and a cluster orchestrator are outside the initial scope. PostgreSQL 15 is the existing migration baseline; migrating its data model and upgrading its database engine are separate changes with separate rehearsals.
+The context and logical views express responsibilities. The deployment view expresses the implemented Compose topology. Proposed capacity changes and real external adapters are described as future operating decisions rather than extra deployed services.
 
-Local development uses PostgreSQL 18 and synthetic fixtures. A local authentication adapter can support deterministic development and integration tests only when the environment explicitly permits it. Production startup must reject that adapter. A real provider integration, including negative token and callback tests, is required before a tenant pilot.
+## Product and trust boundaries
 
-See [System context](diagrams/context.mmd) and [Containers](diagrams/container.mmd).
+An organization is the tenant boundary; a project belongs to exactly one organization. A globally published resource is available to that organization only through an active project entitlement. Consumption additionally requires an active unexpired membership and the exact active membership/project/resource grant. Manager authority, staff status, catalog publication, resource names and email domains grant no implicit consumption access.
 
-## Modules and dependency direction
-
-| Module | Owns | Dependencies |
+| Boundary | Trusted input and verification | Authority it does not confer |
 | --- | --- | --- |
-| Identity | OIDC callback, immutable issuer and subject association, sessions | Provider port, session repository |
-| Organizations | Organizations, projects and project entitlements | Identity principal, catalog identifiers |
-| Access | Memberships, resource grants and central policy | Organization context and catalog state |
-| Invitations | Invitation lifecycle and acceptance | Identity, Access, outbox |
-| Catalog | Global resources and localization | Publisher credential validation |
-| Reports | Configuration, scoped references and critical use | Access policy and resource versions |
-| Audit | Append events in a caller owned transaction | Actor and operation metadata |
-| Migration | Backfill, equivalence checks and cutover ledger | Explicit source adapter and target repositories |
+| Browser → HTTP | Opaque session cookie; session-bound CSRF token and exact origin for mutations; bounded validated payload | A path organization ID, selected card or cached permission is requested scope |
+| OIDC → identity service | Configured issuer, allowed algorithm/audience, validated signature, state/nonce, PKCE and trusted authentication claims | Display email cannot merge identities; provider login alone assigns no membership |
+| Platform → platform operations | Distinct platform bearer credential and allowlisted operations | Provisioning authority does not allow resource consumption |
+| Publisher → catalog | Distinct Publisher bearer credential, external-key/version checks and catalog-only handlers | Publication cannot write customer memberships, entitlements or grants |
+| Maintenance → local CLI | Separate operations credential, expected epoch and reviewed synthetic manifests | A web migration review cannot switch writer authority |
+| Application → primary database | Runtime role, scoped SQL, composite constraints, current policy and cooperating lock protocol | Direct table integrity does not implement time, role or advisory-lock policy |
+| Delivery/recovery → local storage | Protected volumes and safe identifiers; journal intent/outcome is separate from database recovery | A delivered link or journal record is not a second permission store |
 
-HTTP handlers validate request shapes and call application services. Services enforce invariants and own one unit of work. Repositories express scoped queries and persist changes; they never commit independently. Domain policy remains independent of FastAPI and SQLAlchemy. Ports isolate the identity provider, delivery system and existing source adapter. Frontend features call one typed HTTP client and reuse the query key factory.
+See [Security](SECURITY.md) for threats and [Identity and delivery](IDENTITY_AND_DELIVERY.md) for identity/provider limits. There is no global administrative consumption bypass.
 
-This division applies DRY to shared rules: one policy predicate, one transaction owner, one tenant context resolver and one error mapping. It does not introduce a generic repository framework or a custom migration framework. Explicit domain operations remain easier to inspect than a universal CRUD abstraction.
+## Actual local deployment
 
-## Data model and constraints
+![Implemented local services, process counts, volumes and credential scopes](diagrams/deployment.svg)
 
-| Record | Identity and invariant |
-| --- | --- |
-| `users` | Immutable `(issuer, subject)` is unique. Verified email is contact and invitation evidence, never a primary identity key. |
-| `organizations` and `projects` | Every project carries its organization identifier. Active organization and project status are necessary for use. |
-| `memberships` | Unique `(organization_id, user_id)`; role `viewer` or `access_manager`; status `active` or `suspended`; kind `customer` or `staff`; aggregate `access_version`. Staff requires `expires_at` and an assignment reason. |
-| `resources` | Global unique `external_key`, `catalog_version` and `published` or `archived` status. Publisher owns catalog changes. |
-| `resource_localizations` | Unique resource and locale pair; localization never carries authorization. |
-| `project_resources` | Composite organization, project and resource identity; status `active` or `disabled`. |
-| `resource_grants` | Scoped membership, project and resource tuple; state `active` or `revoked`; edits use the membership's aggregate access version. |
-| `invitations` and `invitation_resources` | Invitation belongs to one organization; references use the same project entitlement relationship as grants. Token digest is stored separately from delivery payload. |
-| `report_configs` and `report_resource_refs` | Organization scoped configuration with normalized references to entitled project resources. |
-| `audit_events`, `sessions`, migration ledger and outbox | Transactional evidence, opaque session state, migration progress and durable delivery respectively. |
+[Editable deployment source](diagrams/deployment.mmd) · [Compose definition](../compose.yaml)
 
-Tenant children use composite foreign keys containing `organization_id`, including grants, invitation references and report references. This rejects a project from one organization paired with a membership from another, even when individual identifiers exist. Cross row role rules and lock ordering belong in application services; a row `CHECK` cannot prove them. PostgreSQL supports composite foreign keys and requires their referenced columns to be unique. See [PostgreSQL constraints](https://www.postgresql.org/docs/18/ddl-constraints.html). Scopegate's use of those constraints for tenant integrity is a design decision.
+Five services remain running after one-shot initialization. The maintenance service runs only when its profile is explicitly selected.
 
-Resources are archived rather than hard deleted; foreign key deletion is restrictive. Revoked grants remain addressable. A changed command increments the membership's aggregate access version once. Mutation computes additions, reactivations and revocations as a difference between current and requested sets, preserving unchanged records. Wholesale deletion and reinsertion would lose history and enlarge the race window.
+| Service | Process and endpoint | Durable storage and responsibility |
+| --- | --- | --- |
+| `web` | Unprivileged nginx on container port 8080; loopback `5187` | Built React assets; same-origin `/api`, `/auth` and `/health` proxy to `api:8457` |
+| `api` | One container, two Uvicorn application worker processes; loopback `8457` | Runtime database connection, journal and mailbox volumes; HTTP commands and protected reads |
+| `database` | PostgreSQL 18; loopback `5547` maps container 5432 | `database` volume; sole authority for sessions, entitlements, grants, receipts, audit, migration and outbox |
+| `identity` | Independent local OIDC application; loopback `8901` | Reserved volume mount; fixture signing key and authorization codes are process-local |
+| `worker` | `python -m scopegate.worker`; no published port | Runtime database connection and `mailbox` volume; committed outbox claims and delivery |
+| `initialize` | One-shot `python -m scopegate.bootstrap` after database readiness | Separate migration credential; applies Alembic, configures runtime privileges and seeds idempotently |
+| `operations` | Opt-in `maintenance` profile; `python -m scopegate.cli` | Runtime database credential plus operations key; shared journal/mailbox and read-only migration fixtures |
 
-See [Entity relationships](diagrams/er.mmd) and the authoritative [schema contract](../specs/contracts/schema.sql).
+The same versioned backend image supplies API, worker, identity fixture, initializer and operations CLI. This is process separation around one application. Initialization completes before API and worker start. Browser redirects use the public OIDC issuer; the API exchanges codes and fetches configured discovery/JWKS through the internal identity address. Issuer validation still uses the configured public issuer. The [local provider](../identity_provider/app.py) regenerates its signing key and drops in-flight authorization codes on process restart; its mounted volume is currently unused. A new login uses the new JWKS key, while established opaque application sessions retain their primary-database lifecycle. This fixture does not promise persistent production provider state.
 
-## Authorization and query shape
+The web proxy resolves the Docker service name dynamically so an API container replacement does not leave a stale upstream address. All published ports bind to loopback. Local HTTP and synthetic accounts are demonstration configuration; production validation refuses the unimplemented live delivery/journal/host adapters and insecure local configuration.
 
-The application derives the actor from a validated session and resolves an active organization membership from the database. A tenant identifier in a path is a requested scope, not authority. Detail reads, lists, counts, searches, writes, exports and report execution apply the same policy in their database query or service boundary before materializing results.
+### Credential and persistence ownership
 
-Consumption requires all of the following at the decision instant: a valid session, an active organization, an active unexpired membership in that organization, an active project in that organization, an active project entitlement, a published resource and an active grant for that membership and project resource. Access management additionally requires `access_manager` and remains constrained by the organization's existing entitlements. Managers cannot create or promote another manager or remove the last active non-expiring customer manager; platform operations handle manager provisioning through a separate controlled path.
+Only `initialize` receives the privileged migration database URL. API and worker explicitly receive an empty migration URL and use `scopegate_app`, which cannot own the schema, create roles/databases, bypass row security or mutate/delete existing audit rows. The application receives INSERT/SELECT on audit; Alembic's version table is read-only. These database restrictions complement service authorization; API, worker and maintenance currently share the runtime database role rather than table-specific roles.
 
-An inaccessible object yields `404`, including guessed identifiers. A known organization in which the actor has an active membership but insufficient role yields `403`. Response bodies and logs do not reveal hidden organization names, project existence or resource metadata. List filtering happens before pagination and counting. Report references are checked individually; a mixed allowed and denied set fails atomically.
+API receives session/cursor, outbox, platform and Publisher keys. Worker receives the outbox key and runtime database connection. Maintenance receives its separate operations key and outbox key. The web image contains no application credentials. Ignored local configuration is generated with restrictive permissions; [bootstrap.py](../backend/src/scopegate/bootstrap.py) and [compose.yaml](../compose.yaml) are the exact privilege and environment definitions.
 
-## Transaction and concurrency protocol
+Journal and mailbox volumes are outside the recovered database volume, so the local recovery rehearsal can retain newer intent while restoring database state. They still share the Docker host. A host-loss or independently durable production recovery guarantee requires an external adapter and separate proof. Local trace files are safe diagnostic output in the API container, not an external telemetry service or a recovered authority.
 
-Authorization is a live database decision. Cached frontend permissions are presentation hints. Services use a bounded transaction and acquire locks in this order:
+### Budgets and availability boundary
 
-1. Lock existing affected resource rows in deterministic identifier order. Critical use and access mutations use `FOR SHARE`; Publisher archival takes `FOR UPDATE`. Missing or archived input does not skip policy validation. Hard deletion is forbidden.
-2. Acquire a transaction scoped advisory lock for the organization. Critical consumption uses the shared variant; access mutations use the exclusive variant.
-3. Lock a membership row where mutation requires it, then check its expected access version. Issue lock acquisition separately from a new policy statement under READ COMMITTED, refresh ORM snapshots, and recompute policy using the authoritative clock after waits. Invitation transitions lock their invitation row after the applicable resource, organization and membership locks.
+Each API process has a pool of four persistent connections plus one overflow connection; two processes allocate at most ten. Worker allocates two; an opt-in maintenance process allocates two. PostgreSQL allows 60 total connections, leaving space for initialization, probes and rehearsals. Processes do not share their Python pool or admission counters. Replacement and larger topologies need a new aggregate budget.
 
-Membership suspension and expiration changes take the organization lock and membership lock without acquiring resource locks later. Publisher changes never acquire organization locks and never alter grants. These restrictions prevent an inverted lock dependency. Advisory locks use the organization's stored unique `lock_key`; they must not use a process randomized hash. The lock protocol is an application obligation and is verified against real database connections.
+Current limits are 16 admitted HTTP requests and eight waiting requests per process, with a 50 ms admission wait; database pool wait is 100 ms, lock timeout 250 ms, statement timeout 750 ms and transaction timeout 1,200 ms. [config.py](../backend/src/scopegate/config.py), [db.py](../backend/src/scopegate/db.py) and [observability.py](../backend/src/scopegate/observability.py) own those values. The capacity gate measures a bounded single API process on the internal Docker network; it does not certify nginx/browser transport, sustained production load or the aggregate two-process topology.
 
-Critical report use holds shared resource and organization locks while checking policy, validating normalized report references and creating the durable result inside the same transaction. Revocation waits for earlier critical use to commit, then changes the grant and audit event under the exclusive organization lock. Any critical use that obtains the lock after revocation commits sees the revoked state. Revocation cannot erase an artifact already committed while access was valid. Large or external work must be decomposed into bounded steps that reauthorize before each durable output; an unbounded transaction is not acceptable.
+Compose restart policies and health checks support a local demonstration. One host and one primary database remain failure domains; there is no automatic database failover, cluster orchestrator or replicated authorization store. [Capacity](CAPACITY_PLAN.md) and [reliability](RELIABILITY_DESIGN.md) specify the evidence needed before changing that topology.
 
-Expiration is checked after waiting for locks using `clock_timestamp()` or an immediately captured authoritative wall clock. A transaction start timestamp is insufficient when a lock wait spans expiration. Lock and statement timeouts abort rather than extend access indefinitely; retryable failures restart the entire use case with the same actor scoped idempotency key. Durable authorization changes and their audit event commit together. Delivery occurs only after commit.
+## Implemented component boundaries
 
-See [Revocation sequence](diagrams/grant-revocation.mmd). The precise timeout budget must be established by the concurrency and load gates before a pilot.
+![Source-backed HTTP, service, policy, transaction and integration components](diagrams/components.svg)
 
-## Invitation acceptance
+[Editable component source](diagrams/components.mmd) · [Detailed ownership](DOMAIN_DESIGN.md#implemented-component-layout)
 
-Issuing an invitation validates every requested project resource against active organization entitlements and the sender's manager role. Creation stores a bounded single use token digest, invitation resource references, audit event and outbox item in one transaction. The delivery adapter handles the sensitive link outside that transaction.
+FastAPI adapters in `api/` parse bounded transport types and delegate. Cohesive use-case functions in `services/` own transactions through `db.transaction()`. The pure predicate in `domain/policy.py` accepts facts and an explicit decision time without importing FastAPI or database adapters. SQLAlchemy Core executes parameterized scoped statements; the implementation does not use an ORM repository hierarchy or a custom unit-of-work framework.
 
-Acceptance requires an authenticated OIDC identity whose provider asserts a verified email matching the invitation's canonical email. It locks the invitation and affected authorization state, evaluates expiration after any wait, and revalidates entitlements. The service reuses the existing identity and organization membership rather than creating a duplicate. A suspended membership is not silently reactivated, and an existing manager is not downgraded by a viewer invitation. Membership changes, explicit grants, accepted state and audit event commit atomically. A consumed, revoked or expired token cannot create new access. Retry semantics must preserve this single transition without exposing the token or producing duplicate grants.
+| Responsibility | Implemented owner | Shared boundary |
+| --- | --- | --- |
+| Principal, OIDC and session lifecycle | [dependencies.py](../backend/src/scopegate/dependencies.py), [services/identity.py](../backend/src/scopegate/services/identity.py) | Session validation completes before tenant transaction locks |
+| Organizations, projects and memberships | [services/workspace.py](../backend/src/scopegate/services/workspace.py), [invariants.py](../backend/src/scopegate/services/invariants.py) | Scoped management authority and durable manager continuity |
+| Grant delta and protected report configuration | [services/access.py](../backend/src/scopegate/services/access.py) | Central policy and ordered resource/organization locks |
+| Catalog/search and entitlement transitions | [catalog.py](../backend/src/scopegate/services/catalog.py), [entitlements.py](../backend/src/scopegate/services/entitlements.py) | Publication is global; availability is an exact organization/project/resource relation |
+| Invitation acceptance and committed delivery | [enrollment.py](../backend/src/scopegate/services/enrollment.py), [delivery.py](../backend/src/scopegate/services/delivery.py), [worker.py](../backend/src/scopegate/worker.py) | Transactional encrypted outbox; external send after claim commit |
+| Migration, compatibility and restore | [migration.py](../backend/src/scopegate/services/migration.py), [compatibility.py](../backend/src/scopegate/services/compatibility.py), [recovery.py](../backend/src/scopegate/services/recovery.py), [cli.py](../backend/src/scopegate/cli.py) | Explicit evidence, writer epoch and restore fence |
+| Receipts, audit, scoped authority and cursors | [services/common.py](../backend/src/scopegate/services/common.py) | Caller-owned transaction; no independent commit |
+| Independent journal | [journal.py](../backend/src/scopegate/journal.py) | No journal I/O while domain locks are held |
+| Causal diagnostic context and safe signals | [telemetry.py](../backend/src/scopegate/telemetry.py), [observability.py](../backend/src/scopegate/observability.py) | Fixed span/label vocabulary, bounded async local export and no command authority |
 
-Stored lifecycle states are `pending`, `accepted` and `revoked`. An effective `expired` state is derived from the current clock while pending; the correctness of expiration never depends on a sweeper. See [Invitation sequence](diagrams/invitation-sequence.mmd).
+DRY centralizes repeated business rules, error mapping, lock primitives and receipt binding. It does not merge similar-looking operations with different authority or lifecycle semantics. Read projections may join several contexts, but write ownership stays explicit. Adding a broker, generic repository or policy engine requires a recorded problem and evidence, rather than a pattern inventory.
 
-## Interface state and localization
+## Critical protocols
 
-The interface distinguishes loading, empty, forbidden, stale and failed states. A manager can select only entitled project resources returned by a scoped endpoint. A viewer sees only explicitly granted resources. No global catalog browser is exposed to tenant sessions.
+### Protected use and revocation
 
-Every tenant query key includes organization, principal and resource scope where applicable. Organization switching cancels old requests, resets tenant state and invalidates scoped cache entries; logout clears the entire session cache. Late responses from the previous organization cannot render in the current view. Authorization failures trigger refresh and safe redirection rather than retaining a usable stale action.
+An initial visibility read conceals foreign identifiers but grants no lasting permission. Critical output then starts a bounded READ COMMITTED transaction, locks resource rows in UUID order `FOR SHARE`, acquires the organization's shared advisory transaction lock, and reads current scoped facts in a new statement. Database wall clock is captured after waits. All referenced resources must pass policy before the report configuration and references commit.
 
-Resource labels use requested locale with a documented fallback. Locale never changes grant identity. Translation content is escaped and cannot inject executable markup.
+Grant mutations take those resource locks and the exclusive organization lock, recheck current manager authority, serialize the actor/organization/operation/key receipt lookup, and lock the target membership before applying a new versioned delta. Invitation acceptance and entitlement disable additionally lock their affected membership and invitation rows in deterministic order. Membership-only changes never acquire resource locks afterward; catalog archival takes `FOR UPDATE` on the resource and never acquires an organization lock.
 
-## Evolution and operating model
+An earlier critical use can commit before a waiting revocation. Once revocation commits, a later protected admission sees the revoked grant and denies. Revocation cannot remove a previously produced artifact. Ordinary list reads provide current authorized rows at their statement snapshot; the browser view is not a commit-ordered authorization ticket. See [Revocation sequence](diagrams/grant-revocation.svg) and [exact lock schedules](DISTRIBUTED_CORRECTNESS.md).
 
-Migration follows expand, backfill, compare, shadow read, fenced pilot cutover and contract. The target becomes canonical for each cutover organization. Legacy writers remain fenced and cannot resurrect revoked grants. A rollback after cutover may restore only a target compatible application version; reverting the schema or reenabling an older authorization writer is not a safe rollback. See [Migration phases](diagrams/migration-phases.mmd) and [ADR 4](adr/0004-staged-migration.md).
+### Atomic mutation, receipt and independent journal
 
-The initial deployment has one database consumer boundary through the application. A central policy plus composite constraints and negative tests is the first enforcement layer. Row security is a planned defense before multiple independent database consumers are introduced, rather than an untested duplicate policy in the first increment. See [ADR 5](adr/0005-central-policy-before-rls.md).
+Journal-required commands prepare safe intent before starting the domain transaction. Within that transaction, changed domain rows, versions, audit and the actor-scoped response receipt commit together. A matching receipt replay checks current authority and returns its recorded result without applying the old delta. A changed fingerprint yields `409`; a new stale expected version yields `412`.
 
-Operational signals cover authorization denials, grant conflicts, invitation transitions, outbox age, database errors, lock waits and migration mismatches. They include request identifiers and safe actor and tenant references, not tokens or sensitive resource payloads. Availability and latency objectives are measured during the load gate; this architecture makes no throughput claim.
+After the connection is released, the wrapper appends the journal outcome. Failure before preparation produces `503` with no domain effect. Failure to confirm outcome after commit produces observable uncertainty: retry the same command key and payload, then reconcile; do not submit a replacement key or describe the operation as rolled back. The journal is recovery evidence rather than a second authorization store, and there is no distributed atomic-commit claim. See [Delivery system](DELIVERY_SYSTEM.md) and the concrete [journal wrapper](../backend/src/scopegate/services/common.py).
 
-## Decisions and further reading
+### Invitation and outbox
 
-- [ADR 1 Modular monolith](adr/0001-modular-monolith.md)
-- [ADR 2 Explicit resource grants](adr/0002-explicit-resource-grants.md)
-- [ADR 3 Invitation onboarding](adr/0003-invitation-onboarding.md)
-- [ADR 4 Staged migration](adr/0004-staged-migration.md)
-- [ADR 5 Central policy before row security](adr/0005-central-policy-before-rls.md)
-- [Security](SECURITY.md), [Quality](QUALITY.md) and [Risk register](RISK_REGISTER.md)
+Invitation creation writes a token digest, explicit plan, audit, receipt and encrypted delivery intent atomically. Worker claims committed messages using `FOR UPDATE SKIP LOCKED`, assigns a 30-second lease and commits before sending to the local mailbox. Acknowledgment matches the current lease token and generation; stale workers change no row. A crash after send can cause a repeat delivery, while verified invitation acceptance remains one database transition.
 
-## Implementation depth and recovery ports
+Delivery state and invitation state are distinct. Acceptance uses trusted recent verified recipient claims, repeats expiry and entitlement checks after waits, preserves a suspended membership and never downgrades an existing manager. Terminal ciphertext purge is bounded and delayed by its retention window; it is not synonymous with successful delivery. [Invitation sequence](diagrams/invitation-sequence.svg), [Identity and delivery](IDENTITY_AND_DELIVERY.md) and [Reliability](RELIABILITY_DESIGN.md) own the complete contracts.
 
-[Domain design](DOMAIN_DESIGN.md) defines context dependencies, atomic operation boundaries, state guards, permissions, ports and planned developer paths. [Transaction correctness](DISTRIBUTED_CORRECTNESS.md) makes isolation, lock ordering, receipt races, provider invalidation and lease outcomes precise. [Decision matrix](DECISION_MATRIX.md) records when alternatives become justified. ADRs 6–8 close continuity, destructive entitlement disable, terminal resource archive and primary-only authorization.
+## Failure behavior and operator signals
 
-[Capacity](CAPACITY_PLAN.md) and [resilience](RELIABILITY_DESIGN.md) propose bounded pool, deadline, admission and delivery configurations. Two initial HTTP replicas share one primary database; their processes and outbox worker have a summed connection budget, including the reserve and deployment replacement strategy. These are hypotheses to measure, not throughput guarantees.
+| Failure or competing action | Product behavior | Recovery and evidence |
+| --- | --- | --- |
+| Invisible object or wrong organization | Scoped `404`; no foreign metadata returned | Negative policy, HTTP contract and database cases |
+| Active organization membership lacks required management role | `403`; no mutation | Current scoped role check |
+| Version or impact changed since review | `412`; no partial change | UI retains draft and requires a fresh review |
+| Admission, pool or lock budget exhausted | Bounded `429` or `503`; failed transaction rolls back | Safe correlation ID, bounded category and retry guidance |
+| Primary database unavailable | Protected work fails; no cache/replica fallback | Readiness and database failure signals |
+| Identity provider fails | No new verified login; existing sessions retain their defined lifetime | Provider tests; account disable is separate from local logout |
+| Worker stops or delivery fails | Outbox remains visible for lease/retry recovery; invitation acceptance rules remain unchanged | Pending age, failed delivery count, reviewed replay/purge |
+| Journal preparation or outcome fails | Preparation denies; postcommit outcome remains uncertain | Same-key receipt retry and independent reconciliation |
+| Restored database lacks later access changes | External local marker fences access before reconciliation | Retain restrictions and invalidate restored tokens before reopening |
 
-Disaster recovery has a separate externally durable journal port for live access intent and outcome. A prepared intent is acknowledged before a journal-required mutation; audit and receipt bind its reference. Failure rejects that mutation without effects. It introduces no second authorization store and no distributed atomic-commit claim. The local rehearsal uses an isolated durable synthetic adapter outside the recovered database. The production host must supply and prove an independently durable adapter before permission-preserving recovery is claimed. [Delivery system](DELIVERY_SYSTEM.md) specifies uncertainty fencing and reconciliation. Ordinary application rollback continues to use current target state.
+Metrics use bounded route/method/status labels. Safe structured logs carry correlation IDs, not cookies, recipient tokens or payloads. Causal traces connect HTTP admission to command, database transaction and provider spans; validated traceparent inside the encrypted outbox reconnects the separate worker delivery attempt. Parent span IDs preserve causality, while fixed operation/dependency names and allowlisted HTTP attributes exclude SQL, URLs, recipient payloads and exception messages. Trace metadata is removed before the delivery adapter/mailbox and participates in neither policy nor the command fingerprint.
+
+Local API and worker initialization use asynchronous export with a 256-span queue, 64-span batch and 500 ms schedule. Queue pressure or export failure can lose diagnostic evidence; it cannot change a business result or replace an error. Export flush is best effort outside transactions. These bounds protect the producer from synchronous file I/O, not a production trace-retention or telemetry-availability guarantee. [Tracing cases](../backend/tests/test_tracing.py) exercise causal linkage, redaction, legacy/invalid envelopes and failure isolation. `/metrics` requires the platform credential. Each API process has its own counters; a scrape of one worker is not a complete two-process aggregation. Synthetic operations snapshots and release artifacts demonstrate local behavior; a production telemetry backend and collection strategy need their own deployment design.
+
+## Evolution and delivery boundary
+
+The local migration fixture exercises provenance, reviewed ambiguity, resumable backfill, decision comparison, fencing, target cutover and permission-preserving recovery. The web workbench reviews evidence; the CLI owns writer transitions. After target cutover, application rollback may restore only a target-compatible version while retaining target state and the legacy writer fence. A backfill alone is not permission to switch live traffic.
+
+Real source/writer inventory, production identity and delivery providers, independently durable journal/host recovery, intended access approval and monitored cohorts remain live prerequisites. Database engine upgrade is a separate change from authorization-model migration. Row security and separate database roles for independent consumers are future defenses when new database consumers justify them, rather than guarantees of this local runtime.
+
+The [modular monolith decision](adr/0001-modular-monolith.md), [migration design](MIGRATION.md), [risk register](RISK_REGISTER.md) and [release workflow](../specs/execution.json) capture triggers, owners and evidence for these changes. Current scope is the complete local product and its measured release.
