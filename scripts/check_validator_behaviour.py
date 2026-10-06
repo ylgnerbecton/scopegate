@@ -20,7 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_ROOTS = (
     ".editorconfig", ".gitignore", "AGENTS.md", "Makefile", "PROJECT.md",
-    "README.md", ".env.example", ".dockerignore", "compose.yaml", ".github", "docs", "scripts", "specs",
+    "README.md", "LICENSE", ".env.example", ".dockerignore", "compose.yaml", ".github", "docs", "scripts", "specs",
     "backend", "frontend", "identity_provider", "fixtures", "ops",
 )
 EXCLUDED = {
