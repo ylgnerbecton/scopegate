@@ -165,15 +165,19 @@ def terminate_gate(process):
 
 
 def standalone_reports(root, gate_id, output):
-    reports = []
+    sources, reports = [], []
     for relative in OUTPUTS.get(gate_id, []):
-        source = safe_path(root, relative)
+        sources.append(safe_path(root, relative))
+        name = "browser-results.json" if relative == "artifacts/browser/results.json" else sources[-1].name
+        reports.append(output / name)
+    ensure(len(set(reports)) == len(reports), "Duplicate standalone report destinations")
+    ensure(not any(path.exists() or path.is_symlink() for path in reports),
+           "Standalone report destination already exists")
+    for source, destination in zip(sources, reports, strict=True):
         artifact(root, source)
         if source.suffix == ".json":
             load_json(source)
-        destination = output / ("browser-results.json" if gate_id == "G-BROWSER" else source.name)
         shutil.copyfile(source, destination)
-        reports.append(destination)
     return reports
 
 

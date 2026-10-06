@@ -58,6 +58,8 @@ def gate_check(record, expected, revision):
     finish = datetime.fromisoformat(record["finished_at"].replace("Z", "+00:00"))
     ensure(start.tzinfo is not None and finish.tzinfo is not None, f"{label}: timestamps require timezone")
     ensure(start <= finish <= datetime.now(timezone.utc), f"{label}: invalid run time")
+    paths = [artifact["path"] for artifact in record["artifacts"]]
+    ensure(len(set(paths)) == len(paths), f"{label}: duplicate artifact paths")
     for artifact in record["artifacts"]:
         artifact_check(artifact)
 

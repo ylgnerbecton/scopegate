@@ -12,6 +12,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from check_evidence import EvidenceFailure, gate_check
 from package_review import (
     ARCHIVE_MANIFEST,
     archive_index,
@@ -27,6 +28,7 @@ from record_evidence import (
     gate_environment,
     junit_results,
     scenario_proof,
+    standalone_reports,
     vitest_results,
 )
 from record_evidence import (
@@ -155,6 +157,70 @@ def test_runner_rejects_skipped_frontend_and_browser_results(tmp_path):
     write_json(browser, {"stats": {"skipped": 1}, "suites": []})
     with pytest.raises(ReleaseFailure, match="skipped tests"):
         browser_results(browser)
+
+
+def browser_report_fixture(root):
+    payloads = {
+        "artifacts/browser/results.json": {"suites": [{"title": "Workspace"}], "stats": {"expected": 6}},
+        "artifacts/browser/interaction-evidence.json": {
+            "keyboard_traversals": [{"viewport": 375, "actions": ["Tab", "Enter"]}],
+            "axe_scans": [{"violations": []}],
+        },
+        "artifacts/browser/tenant-delay-evidence.json": {
+            "held_source": "cedar", "visible_destination": "birch", "old_response_released": True,
+        },
+    }
+    for relative, payload in payloads.items():
+        write_json(root / relative, payload)
+    output = root / "artifacts/evidence/G-BROWSER"
+    output.mkdir(parents=True)
+    return output, payloads
+
+
+def test_browser_reports_preserve_distinct_producer_contents(tmp_path):
+    output, payloads = browser_report_fixture(tmp_path)
+    reports = standalone_reports(tmp_path, "G-BROWSER", output)
+    expected_names = ["browser-results.json", "interaction-evidence.json", "tenant-delay-evidence.json"]
+    assert [path.name for path in reports] == expected_names
+    assert len(set(reports)) == 3 and set(output.iterdir()) == set(reports)
+    for source, destination in zip(payloads, reports, strict=True):
+        assert destination.read_bytes() == (tmp_path / source).read_bytes()
+        assert json.loads(destination.read_text()) == payloads[source]
+
+
+def test_browser_report_destination_collision_fails_before_copy(tmp_path):
+    output, payloads = browser_report_fixture(tmp_path)
+    colliding = "artifacts/another/browser-results.json"
+    write_json(tmp_path / colliding, {"different_producer": True})
+    with (
+        patch("record_evidence.OUTPUTS", {"G-BROWSER": [*payloads, colliding]}),
+        pytest.raises(ReleaseFailure, match="Duplicate standalone report destinations"),
+    ):
+        standalone_reports(tmp_path, "G-BROWSER", output)
+    assert list(output.iterdir()) == []
+    assert json.loads((tmp_path / colliding).read_text()) == {"different_producer": True}
+
+
+def test_browser_report_collection_preserves_existing_destination(tmp_path):
+    output, _ = browser_report_fixture(tmp_path)
+    previous = output / "browser-results.json"
+    previous.write_bytes(b"Existing producer evidence must remain intact.\n")
+    with pytest.raises(ReleaseFailure, match="destination already exists"):
+        standalone_reports(tmp_path, "G-BROWSER", output)
+    assert previous.read_bytes() == b"Existing producer evidence must remain intact.\n"
+    assert list(output.iterdir()) == [previous]
+
+
+def test_gate_verifier_rejects_duplicate_artifacts_with_valid_hashes(tmp_path):
+    gate = tiny_gate(tmp_path, "lint", "echo verified-artifact-fixture")
+    record, _ = execute_fixture(tmp_path, gate)
+    with patch("check_evidence.ROOT", tmp_path):
+        gate_check(record, gate, "f" * 40)
+        record["artifacts"].append(record["artifacts"][0].copy())
+        with patch("check_evidence.artifact_check") as artifact_verifier:
+            with pytest.raises(EvidenceFailure, match="duplicate artifact paths"):
+                gate_check(record, gate, "f" * 40)
+            artifact_verifier.assert_not_called()
 
 
 def test_sanitized_logs_remove_dotenv_and_failure_repr_secrets(tmp_path):
