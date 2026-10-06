@@ -121,6 +121,58 @@ export class KeyboardJourney {
     );
     await expect(this.page.getByRole('heading', { name: label, exact: true })).toBeVisible();
   }
+  async startInvitationHistory() {
+    await expect(this.page.getByRole('table')).toBeVisible();
+    const pagination = this.page.locator('.pagination');
+    if (await pagination.count()) {
+      await expect(pagination).toContainText('Page 1 ·');
+      await expect(
+        pagination.getByRole('button', { name: 'Previous', exact: true }),
+      ).toBeDisabled();
+    }
+  }
+  async findInvitation(recipientEmail: string) {
+    const row = this.page.getByRole('row').filter({ hasText: recipientEmail });
+    const pagination = this.page.locator('.pagination');
+    for (let currentPage = 1; currentPage <= 20; currentPage++) {
+      await expect(this.page.getByRole('table')).toBeVisible();
+      if (await row.count()) {
+        await expect(row).toContainText('pending');
+        this.steps.push({
+          action: 'Locate confirmed invitation',
+          control: `Invitation history page ${currentPage}`,
+          width: this.width,
+        });
+        return;
+      }
+      const next = pagination.getByRole('button', { name: 'Next', exact: true });
+      expect(await next.count(), 'The confirmed invitation must occur in bounded history').toBe(1);
+      await expect(next).toBeEnabled();
+      expect(currentPage, 'Invitation history verification is bounded to 20 pages').toBeLessThan(
+        20,
+      );
+      const pageResponse = this.page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return (
+          response.request().method() === 'GET' &&
+          /^\/api\/v1\/organizations\/[^/]+\/invitations$/.test(url.pathname) &&
+          url.searchParams.get('limit') === '25' &&
+          url.searchParams.has('cursor')
+        );
+      });
+      await this.activate(next);
+      const response = await pageResponse;
+      expect(response.status(), 'Keyboard pagination receives the actual history page').toBe(200);
+      await expect(pagination).toContainText(`Page ${currentPage + 1} ·`);
+      await expect(this.page.getByRole('table')).toBeVisible();
+      this.steps.push({
+        action: 'Next page by keyboard',
+        control: `Invitation history page ${currentPage + 1}`,
+        width: this.width,
+      });
+    }
+    throw new Error('The confirmed invitation was not found within 20 history pages.');
+  }
   async attachEvidence() {
     expect(await this.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,

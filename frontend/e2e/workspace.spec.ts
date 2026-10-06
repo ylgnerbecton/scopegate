@@ -398,6 +398,7 @@ test('localized search, narrow layouts, keyboard navigation, and last manager pr
 
     // Every operator action in these journeys uses browser keyboard events only.
     await keyboard.navigate('Invitations');
+    await keyboard.startInvitationHistory();
     await keyboard.activate(page.getByRole('button', { name: 'Create invitation', exact: true }));
     await keyboard.type(page.getByRole('textbox', { name: 'Recipient email' }), email);
     await keyboard.toggle(page.getByRole('checkbox', { name: /Market pulse/ }));
@@ -413,6 +414,7 @@ test('localized search, narrow layouts, keyboard navigation, and last manager pr
     await expect(
       page.getByRole('button', { name: 'Create invitation', exact: true }),
     ).toBeFocused();
+    await keyboard.findInvitation(email);
     await keyboard.activate(
       page.getByRole('button', { name: `Revoke invitation to ${email}`, exact: true }),
     );
