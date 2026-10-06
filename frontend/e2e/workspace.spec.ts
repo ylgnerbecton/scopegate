@@ -125,6 +125,11 @@ test('verified invitation, scoped grant diff, resource use, revocation, and audi
   await page.getByRole('button', { name: /Morgan Lane/ }).click();
   await expect(page.getByRole('heading', { name: 'Your explicit resource plan' })).toBeVisible();
   await expect(page).toHaveURL(/\/invitations\/accept$/);
+  await expect(page.locator('.acceptance-identity')).toContainText(
+    'Verified recipient: morgan@example.test',
+  );
+  await expect(page.locator('.accepted-resource-plan')).toContainText('Market pulse');
+  await expect(page.getByRole('button', { name: 'Accept invitation', exact: true })).toBeEnabled();
   await scanAccessibility(page, 'verified-recipient-plan');
   await page.getByRole('button', { name: 'Accept invitation', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Invitation accepted.' })).toBeVisible();

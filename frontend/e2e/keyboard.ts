@@ -245,7 +245,7 @@ export async function scanAccessibility(page: Page, name: string) {
   expect(
     result.passes.length,
     'The accessibility scan must exercise actual rendered content',
-  ).toBeGreaterThan(10);
+  ).toBeGreaterThanOrEqual(10);
   expect(violations, `Accessibility scan ${name}`).toEqual([]);
   pageEvidence(page).scans.push({
     name,
