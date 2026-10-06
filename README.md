@@ -35,7 +35,7 @@ A published resource does not grant customer access; an entitlement does not gra
 
 ## Verify and package
 
-Development and validation require `uv`, Node.js 24, npm, and Chromium. The browser suite uses installed Chrome on macOS; CI can install Chromium with Playwright.
+Development and validation require `uv`, Node.js 24, npm, and Chromium. The browser suite uses installed Chrome on macOS; CI can install Chromium with Playwright. The rollback rehearsal requires this release's compatible parent commit in Git; the workflow fetches two revisions and checks matching database and HTTP contracts before using the earlier artifact.
 
 ```sh
 make deps
@@ -51,7 +51,7 @@ Tests use a separate `scopegate_test` database on this project's PostgreSQL inst
 
 `make verify` executes runtime gates, captures real exit codes, checks the committed revision and creates hashed evidence. A missing tool, skipped test, unsuccessful command or stale generated contract blocks completion. `make package` creates the review archive under `artifacts/review/`, including public source and referenced proof. It excludes credentials, dependency directories, old failed logs and private inputs.
 
-Verify a downloaded archive without Git or running services with `python3 scripts/package_review.py --verify /path/to/scopegate-<revision>.zip`. This checks the archive inventory, file hashes and executable modes. After extraction, `make setup` and `make up` start the local product. The archive contains no Git history; revision-dependent `make verify` and `make check-evidence` require the original checkout at the recorded commit. An independently initialized copy has a new revision and must collect new runtime evidence.
+Verify a downloaded archive without Git or running services with `python3 scripts/package_review.py --verify /path/to/scopegate-<revision>.zip`. This checks the archive inventory, file hashes and executable modes. After extraction, `make setup` and `make up` start the local product. The archive contains no Git history; revision-dependent `make verify` and `make check-evidence` require the original checkout at the recorded commit, including its compatible parent for the rollback rehearsal. An independently initialized copy has a new revision and needs its own compatible baseline and new runtime evidence.
 
 Maintenance commands for the Compose deployment use `docker compose --profile maintenance run --rm --build operations --help`; this opt-in container shares the actual journal and mailbox volumes. See [identity and delivery](docs/IDENTITY_AND_DELIVERY.md) for the command contract and scope.
 

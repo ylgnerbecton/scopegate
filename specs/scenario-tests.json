@@ -725,7 +725,7 @@
         "docs/DIAGNOSIS.md",
         "docs/DATA_MODEL.md"
       ],
-      "note": "Executable proof uses synthetic local data. Live-provider certification and tenant rollout remain outside the closed delivery."
+      "note": "Executable proof deploys the compatible parent application artifact against the same synthetic test database. A report is confirmed usable before revocation and denied by policy after rollback. Matching database and HTTP contracts establish only this local compatibility window; arbitrary historical binaries and live rollout remain outside the closed delivery."
     },
     {
       "id": "F06-AC-07",

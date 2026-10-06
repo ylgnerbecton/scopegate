@@ -224,7 +224,7 @@ function Workspace({ session }: { session: Session }) {
           onClick={() => setMobileOpen(false)}
         />
       )}
-      <aside className={`sidebar ${mobileOpen ? 'sidebar-open' : ''}`}>
+      <aside id="workspace-navigation" className={`sidebar ${mobileOpen ? 'sidebar-open' : ''}`}>
         <div className="sidebar-brand">
           <Brand />
           <button
@@ -297,12 +297,14 @@ function Workspace({ session }: { session: Session }) {
           </div>
         </div>
       </aside>
-      <div className="workspace-main">
+      <div className="workspace-main" inert={mobileOpen || undefined}>
         <header className="topbar">
           <div className="scope-controls">
             <button
               className="icon-button mobile-menu"
               aria-label="Open navigation"
+              aria-controls="workspace-navigation"
+              aria-expanded={mobileOpen}
               onClick={() => setMobileOpen(true)}
             >
               <Menu size={22} />

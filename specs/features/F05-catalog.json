@@ -94,7 +94,7 @@
       "id": "F05-AC-08",
       "given": "A catalog key is archived",
       "when": "a newer publication attempts to republish it",
-      "then": "409 terminal_resource_state with no content or grant changes; replacement requires a new stable key",
+      "then": "409 resource_archive_terminal with no content or grant changes; replacement requires a new stable key",
       "evidence": "terminal archival contract test",
       "first_evidence_task": "T04"
     }

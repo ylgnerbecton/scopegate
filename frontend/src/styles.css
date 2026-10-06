@@ -221,7 +221,7 @@ code {
   background: currentColor;
 }
 .badge-neutral {
-  color: #6d776d;
+  color: #59664e;
   background: #f0f2ec;
 }
 .badge-green {
@@ -229,7 +229,7 @@ code {
   background: #eef5e4;
 }
 .badge-amber {
-  color: #91691f;
+  color: #765114;
   background: #fbf2dc;
 }
 .badge-red {
@@ -245,7 +245,7 @@ code {
   text-transform: uppercase;
   letter-spacing: 1.5px;
   font-weight: 650;
-  color: #7e897e;
+  color: #59664e;
 }
 .page-heading {
   display: flex;
@@ -262,7 +262,7 @@ code {
   margin: 7px 0 9px;
 }
 .page-description {
-  color: #7a8378;
+  color: #59664e;
   font-size: 13px;
 }
 .heading-icon {
@@ -296,7 +296,7 @@ code {
 .section-heading p {
   margin-top: 3px;
   font-size: 11px;
-  color: #899082;
+  color: #59664e;
 }
 .text-link {
   display: inline-flex;
@@ -388,7 +388,7 @@ code {
   letter-spacing: -0.5px;
 }
 .empty-state p {
-  color: #899082;
+  color: #59664e;
   font-size: 12px;
   max-width: 390px;
   margin-bottom: 19px;
@@ -415,7 +415,7 @@ code {
 .notice-amber {
   background: #fbf5e6;
   border: 1px solid #efdfb9;
-  color: #89703a;
+  color: #705720;
 }
 .app-shell {
   display: flex;
@@ -598,7 +598,7 @@ code {
   align-items: center;
   justify-content: center;
   background: #d7e5be;
-  color: #527141;
+  color: #3f552e;
   border: 1px solid #e5edce;
   border-radius: 50%;
   flex-shrink: 0;
@@ -608,7 +608,7 @@ code {
 .avatar-light {
   background: #eef1e6;
   border-color: #e6ebda;
-  color: #748467;
+  color: #59664e;
 }
 .workspace-main {
   width: calc(100% - 246px);
@@ -640,7 +640,7 @@ code {
 }
 .scope-select label {
   font-size: 9px;
-  color: #8b9487;
+  color: #59664e;
   margin-bottom: 1px;
 }
 .scope-select > div {
@@ -699,7 +699,7 @@ code {
   display: flex;
   justify-content: space-between;
   gap: 20px;
-  color: #99a18f;
+  color: #59664e;
   font-size: 9px;
   padding: 18px 35px;
   border-top: 1px solid #e6e9de;
@@ -1178,7 +1178,7 @@ code {
   width: 375px;
   max-width: 100%;
   height: 43px;
-  color: #a0ae8b;
+  color: #59664e;
 }
 .search-box:focus-within {
   border-color: #92ac76;
@@ -1217,7 +1217,7 @@ code {
   border: 0;
   font-size: 11px;
   padding: 8px 5px;
-  color: #6d7d5f;
+  color: #59664e;
 }
 .display-switch {
   display: flex;
@@ -1453,7 +1453,7 @@ code {
   border: 0;
 }
 .detail-facts span {
-  color: #96a084;
+  color: #59664e;
 }
 .detail-facts strong {
   font-weight: 500;
@@ -1493,7 +1493,7 @@ code {
 }
 .table-caption small {
   display: block;
-  color: #9ba38d;
+  color: #59664e;
   font-weight: 400;
   font-size: 10px;
   margin-top: 3px;
@@ -1511,7 +1511,7 @@ thead {
 }
 th {
   padding: 12px 20px;
-  color: #939d84;
+  color: #59664e;
   font-size: 9px;
   font-weight: 500;
   border-top: 1px solid #edf0e7;
@@ -1526,7 +1526,7 @@ td {
   padding: 18px 20px;
   border-bottom: 1px solid #edf0e7;
   font-size: 10px;
-  color: #8e9a7e;
+  color: #59664e;
 }
 tbody tr:last-child td {
   border-bottom: 0;
@@ -1550,7 +1550,7 @@ tbody tr:hover {
 }
 .person-cell small,
 .recipient-cell small {
-  color: #9ba88b;
+  color: #59664e;
   font-size: 9px;
   display: block;
   margin-top: 2px;
@@ -1560,11 +1560,11 @@ tbody tr:hover {
   align-items: center;
   gap: 5px;
   font-size: 9px;
-  color: #8b9a77;
+  color: #59664e;
   white-space: nowrap;
 }
 .role-manager {
-  color: #79925a;
+  color: #59664e;
 }
 .membership-kind {
   font-size: 9px;
@@ -1573,7 +1573,7 @@ tbody tr:hover {
 .expiry-date {
   display: block;
   font-size: 8px;
-  color: #a6af97;
+  color: #59664e;
   margin-top: 3px;
 }
 .manage-access {
@@ -1585,7 +1585,7 @@ tbody tr:hover {
   border-radius: 5px;
   padding: 8px 9px;
   font-size: 9px;
-  color: #809465;
+  color: #59664e;
   white-space: nowrap;
 }
 .manage-access:hover {
@@ -1596,7 +1596,7 @@ tbody tr:hover {
   display: flex;
   align-items: flex-start;
   gap: 9px;
-  color: #95a287;
+  color: #59664e;
   font-size: 10px;
   margin-top: 18px;
 }
@@ -1631,7 +1631,7 @@ tbody tr:hover {
 }
 .dialog-heading .eyebrow {
   font-size: 8px;
-  color: #9baa87;
+  color: #59664e;
 }
 .dialog-heading h2 {
   font-size: 20px;
@@ -1641,7 +1641,7 @@ tbody tr:hover {
 }
 .dialog-heading p:not(.eyebrow) {
   font-size: 10px;
-  color: #9ca88b;
+  color: #59664e;
   margin-top: 7px;
 }
 .dialog-body {
@@ -1671,7 +1671,7 @@ tbody tr:hover {
 }
 .draft-count {
   font-size: 10px;
-  color: #95a682;
+  color: #59664e;
 }
 .editor-summary {
   display: flex;
@@ -1682,7 +1682,7 @@ tbody tr:hover {
 }
 .editor-summary > span {
   font-size: 10px;
-  color: #8b9b76;
+  color: #59664e;
   display: flex;
   gap: 7px;
   align-items: center;
@@ -1741,13 +1741,13 @@ tbody tr:hover {
 }
 .resource-choice small {
   display: block;
-  color: #a0ae8a;
+  color: #59664e;
   font-size: 9px;
   margin-top: 3px;
 }
 .choice-status {
   font-size: 9px;
-  color: #9dae86;
+  color: #59664e;
 }
 .field-label {
   display: flex;
@@ -1755,7 +1755,7 @@ tbody tr:hover {
   gap: 7px;
   font-size: 10px;
   font-weight: 500;
-  color: #7d9066;
+  color: #59664e;
   margin: 17px 0;
 }
 .field-label input,
@@ -1779,7 +1779,7 @@ tbody tr:hover {
   color: #b0bb9e;
 }
 .form-help {
-  color: #9cab88 !important;
+  color: #59664e !important;
   font-size: 10px !important;
   line-height: 1.75 !important;
 }
@@ -1796,11 +1796,11 @@ tbody tr:hover {
 }
 .form-section-heading h3 {
   font-size: 12px;
-  color: #708953;
+  color: #59664e;
 }
 .form-section-heading span {
   font-size: 10px;
-  color: #9cab84;
+  color: #59664e;
 }
 .diff-preview h3 {
   font-size: 15px;
@@ -1822,12 +1822,12 @@ tbody tr:hover {
 .diff-add {
   background: #f2f7e9;
   border-color: #dfe9cf !important;
-  color: #7d945a;
+  color: #59664e;
 }
 .diff-remove {
   background: #fff2eb;
   border-color: #efdaca !important;
-  color: #bb9172;
+  color: #8a5234;
 }
 .diff-columns span {
   font-size: 11px;
@@ -1840,7 +1840,7 @@ tbody tr:hover {
   font-size: 10px;
 }
 .diff-preview > p {
-  color: #92a17e;
+  color: #59664e;
   font-size: 11px;
   margin: 15px 0;
 }
@@ -1891,10 +1891,10 @@ tbody tr:hover {
   text-transform: capitalize;
 }
 .delivery-delivered {
-  color: #82a361;
+  color: #59664e;
 }
 .delivery-failed {
-  color: #b8896a;
+  color: #8a5234;
 }
 .row-error {
   color: #b16b47;
@@ -1930,11 +1930,11 @@ tbody tr:hover {
 .mailbox-list strong {
   font-weight: 500;
   font-size: 11px;
-  color: #718956;
+  color: #59664e;
 }
 .mailbox-list p {
   font-size: 9px;
-  color: #a0ae8b;
+  color: #59664e;
   margin-top: 3px;
 }
 .mailbox-list .button {
@@ -2642,11 +2642,13 @@ tbody tr:hover {
 @media (max-width: 700px) {
   .sidebar {
     transform: translateX(-100%);
+    visibility: hidden;
     width: 246px;
     transition: transform 0.2s;
   }
   .sidebar-open {
     transform: translateX(0);
+    visibility: visible;
   }
   .sidebar-overlay {
     position: fixed;

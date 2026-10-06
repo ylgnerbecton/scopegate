@@ -21,3 +21,4 @@ docs/evidence/private/
 var/
 .mypy_cache/
 *.egg-info/
+*.tsbuildinfo

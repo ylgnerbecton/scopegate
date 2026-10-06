@@ -44,9 +44,11 @@ GATE_IDS = {
 PYTEST_GATES = GATE_IDS - {"G-LINT", "G-BROWSER", "G-BUILD", "G-RELEASE"}
 OUTPUTS = {
     "G-DOMAIN": ["artifacts/unit/policy-mutations.json"],
-    "G-BROWSER": ["artifacts/browser/results.json"],
+    "G-BROWSER": ["artifacts/browser/results.json", "artifacts/browser/interaction-evidence.json",
+                  "artifacts/browser/tenant-delay-evidence.json"],
     "G-PERFORMANCE": ["artifacts/performance/report.json"],
-    "G-OPERATIONS": ["artifacts/operations/worker-drain.json", "artifacts/operations/proxy-recovery.json"],
+    "G-OPERATIONS": ["artifacts/operations/worker-drain.json", "artifacts/operations/proxy-recovery.json",
+                     "artifacts/operations/rollback-recovery.json"],
     "G-SECURITY": ["artifacts/security/backend-sbom.json", "artifacts/security/frontend-sbom.json",
                    "artifacts/security/frontend-audit.json", "artifacts/security/requirements.lock.txt"],
 }

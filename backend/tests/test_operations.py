@@ -1,19 +1,24 @@
 """Controlled restore and independent journal failure rehearsals."""
 
+import json
+from pathlib import Path
+from runpy import run_path
+from time import time
 from uuid import uuid4
 
+import httpx
 import pytest
 from sqlalchemy import text
 
 from scopegate import db, journal
 from scopegate.errors import AppError
 from scopegate.services import access, recovery
-from scopegate.services.identity import create_session
+from scopegate.services.identity import SESSION_COOKIE, create_session, csrf_value
 
 pytestmark = [pytest.mark.integration, pytest.mark.operations]
 
 
-def revoke(manager, ids):
+def revoke(manager, ids, version=1):
     body = {
         "add": [],
         "remove": [ids["resources"]["market-pulse"]],
@@ -26,24 +31,99 @@ def revoke(manager, ids):
         ids["projects"]["harbor"],
         body,
         str(uuid4()),
-        1,
+        version,
     )
 
 
-def test_compatible_rollback_keeps_target_authority_and_revocation(manager, viewer, ids):
-    revoke(manager, ids)
+def test_compatible_rollback_keeps_target_authority_and_revocation(manager, viewer, ids, settings):
+    root = Path(__file__).resolve().parents[2]
+    applications = run_path(str(root / "scripts/rehearse_rollback.py"))["applications"]
+    tokens = {
+        role: create_session({
+            "iss": settings.oidc_issuer, "sub": subject, "email": actor["email"],
+            "email_verified": True, "name": role, "auth_time": int(time()),
+        })
+        for role, actor, subject in [
+            ("manager", manager, "manager-cedar"), ("viewer", viewer, "viewer-cedar")
+        ]
+    }
+    org, project = ids["organizations"]["cedar"], ids["projects"]["harbor"]
+    base = f"/api/v1/organizations/{org}"
+    report_route = base + f"/projects/{project}/report-configs"
+    grant_route = base + f"/memberships/{ids['memberships']['viewer']}/projects/{project}/grants"
+
+    def headers(role, version=None):
+        values = {"Origin": settings.public_origin, "X-CSRF-Token": csrf_value(tokens[role]),
+                  "Idempotency-Key": str(uuid4())}
+        if version is not None:
+            values["If-Match"] = f'"v{version}"'
+        return values
+
+    with applications(root, settings) as rehearsal:
+        with httpx.Client(base_url=rehearsal.base_url, timeout=3, trust_env=False,
+                          cookies={SESSION_COOKIE: tokens["manager"]}) as client:
+            granted = client.patch(grant_route, headers=headers("manager", 1), json={
+                "add": [ids["resources"]["growth-signals"]], "remove": [],
+                "reason": "Reviewed positive control for compatible application rollback",
+            })
+            assert granted.status_code == 200, granted.text
+        reports = {}
+        with httpx.Client(base_url=rehearsal.base_url, timeout=3, trust_env=False,
+                          cookies={SESSION_COOKIE: tokens["viewer"]}) as client:
+            for key in ["market-pulse", "growth-signals"]:
+                created = client.post(report_route, headers=headers("viewer"), json={
+                    "name": "Compatible rollback " + key, "resource_ids": [ids["resources"][key]],
+                })
+                assert created.status_code == 201, created.text
+                reports[key] = created.json()["id"]
+                before = client.get(report_route + "/" + reports[key])
+                assert before.status_code == 200 and before.json()["id"] == reports[key]
+        with httpx.Client(base_url=rehearsal.base_url, timeout=3, trust_env=False,
+                          cookies={SESSION_COOKIE: tokens["manager"]}) as client:
+            revoked = client.patch(
+                grant_route, headers=headers("manager", 2),
+                json={"add": [], "remove": [ids["resources"]["market-pulse"]],
+                      "reason": "Reviewed revocation before compatible application rollback"},
+            )
+            assert revoked.status_code == 200, revoked.text
+        rehearsal.previous()
+        with httpx.Client(base_url=rehearsal.base_url, timeout=3, trust_env=False,
+                          cookies={SESSION_COOKIE: tokens["viewer"]}) as client:
+            control = client.get(report_route + "/" + reports["growth-signals"])
+            assert control.status_code == 200, control.text
+            assert control.json()["resource_ids"] == [ids["resources"]["growth-signals"]]
+            after = client.get(report_route + "/" + reports["market-pulse"])
+            assert after.status_code == 404, after.text
+            assert after.json()["error"]["code"] == "resource_not_found"
+        evidence = rehearsal.metadata()
     with db.transaction() as conn:
         organization = db.row(
             conn, "SELECT access_mode FROM organizations WHERE id=:id", {"id": ids["organizations"]["cedar"]}
         )
-        grant = db.row(
+        grants = db.rows(
             conn,
-            "SELECT state FROM resource_grants WHERE membership_id=:member AND resource_id=:resource",
-            {"member": ids["memberships"]["viewer"], "resource": ids["resources"]["market-pulse"]},
+            "SELECT resource_id,state FROM resource_grants WHERE organization_id=:org AND project_id=:project "
+            "AND membership_id=:member AND resource_id IN (:market,:growth)",
+            {"org": org, "project": project, "member": ids["memberships"]["viewer"],
+             "market": ids["resources"]["market-pulse"], "growth": ids["resources"]["growth-signals"]},
         )
-    assert organization["access_mode"] == "target" and grant["state"] == "revoked"
-    with pytest.raises(AppError):
-        access.get_report(viewer, ids["organizations"]["cedar"], ids["projects"]["harbor"], str(uuid4()))
+        existing = db.rows(conn, "SELECT id FROM report_configs WHERE organization_id=:org AND project_id=:project "
+                           "AND id IN (:market,:growth)", {"org": org, "project": project,
+                            "market": reports["market-pulse"], "growth": reports["growth-signals"]})
+    states = {str(row["resource_id"]): row["state"] for row in grants}
+    assert organization["access_mode"] == "target"
+    assert states[ids["resources"]["market-pulse"]] == "revoked"
+    assert states[ids["resources"]["growth-signals"]] == "active"
+    assert {str(row["id"]) for row in existing} == set(reports.values())
+    artifact = root / "artifacts/operations/rollback-recovery.json"
+    artifact.parent.mkdir(parents=True, exist_ok=True)
+    artifact.write_text(json.dumps({**evidence, "before_revocation_http_status": 200,
+                                   "after_application_rollback_http_status": 404,
+                                   "control_report_after_rollback_http_status": 200,
+                                   "both_reports_still_exist": True, "control_grant_state": "active",
+                                   "denial_code": "resource_not_found", "report_still_exists": True,
+                                   "authority": "target", "grant_state": "revoked",
+                                   "owned_containers_and_image_tags_removed": True, "passed": True}, indent=2) + "\n")
 
 
 def test_restore_replays_revocation_before_any_tenant_reopens(manager, viewer, ids, admin_engine):

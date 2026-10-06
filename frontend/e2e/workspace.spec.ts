@@ -1,4 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
+import {
+  KeyboardJourney,
+  scanAccessibility,
+  writeBrowserEvidence,
+  writeInteractionEvidence,
+} from './keyboard';
 
 async function login(page: Page, name: string) {
   await page.goto('/auth/login?return_to=/workspace');
@@ -282,6 +288,35 @@ test('staff account switching clears scoped resources and keeps role separate fr
   await expect(page.getByRole('heading', { name: 'No resources granted yet' })).toBeVisible();
   await page.getByRole('button', { name: /Project collection/ }).click();
   await expect(page.getByRole('heading', { name: 'Audience atlas', exact: true })).toBeVisible();
+  const delayedPath =
+    '**/organizations/20000000-0000-4000-8000-000000000001/projects/30000000-0000-4000-8000-000000000001/resources?*';
+  let captured = false;
+  let released = false;
+  let lateResponseIds: string[] = [];
+  let releaseResponse!: () => void;
+  let settleResponse!: () => void;
+  const held = new Promise<void>((resolve) => {
+    releaseResponse = resolve;
+  });
+  const settled = new Promise<void>((resolve) => {
+    settleResponse = resolve;
+  });
+  await page.route(delayedPath, async (route) => {
+    const actual = await route.fetch();
+    expect(actual.status()).toBe(200);
+    const body = await actual.json();
+    lateResponseIds = body.items.map((resource: { id: string }) => resource.id);
+    expect(lateResponseIds).toContain('40000000-0000-4000-8000-000000000002');
+    captured = true;
+    await held;
+    await route.fulfill({ response: actual });
+    released = true;
+    settleResponse();
+  });
+  await page.getByRole('searchbox').fill('Audience');
+  await expect
+    .poll(() => captured, { message: 'A real Cedar resource response is held in flight' })
+    .toBe(true);
   await page.getByLabel('Organization', { exact: true }).selectOption({ label: 'Birch Labs' });
   await expect(page.getByLabel('Project', { exact: true })).toHaveValue(
     '30000000-0000-4000-8000-000000000003',
@@ -290,7 +325,41 @@ test('staff account switching clears scoped resources and keeps role separate fr
   await expect(page.getByRole('heading', { name: 'No resources granted yet' })).toBeVisible();
   await page.getByRole('button', { name: /Project collection/ }).click();
   await expect(page.getByRole('heading', { name: 'Revenue compass', exact: true })).toBeVisible();
+  releaseResponse();
+  await settled;
+  expect(released).toBe(true);
   await expect(page.getByRole('heading', { name: 'Audience atlas', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Revenue compass', exact: true })).toBeVisible();
+  await expect(page.getByRole('searchbox')).toHaveValue('');
+  await page.unroute(delayedPath);
+  await page.getByLabel('Organization', { exact: true }).selectOption({ label: 'Cedar Studio' });
+  await navigate(page, 'Resource library');
+  await expect(page.getByRole('heading', { name: 'No resources granted yet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Revenue compass', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('searchbox')).toHaveValue('');
+  await page.getByLabel('Organization', { exact: true }).selectOption({ label: 'Birch Labs' });
+  await test.info().attach('delayed-tenant-response', {
+    body: JSON.stringify({
+      source: 'real Cedar API response',
+      release: 'after Birch resource collection became visible',
+      capturedResourceIds: lateResponseIds,
+      lateResponseReleased: released,
+      targetContents: 'Revenue compass only; no Cedar resource or previous search selection',
+    }),
+    contentType: 'application/json',
+  });
+  await writeBrowserEvidence('tenant-delay-evidence', {
+    schemaVersion: 1,
+    recordedAt: new Date().toISOString(),
+    test: test.info().title,
+    source: 'actual Cedar API response',
+    captureBeforeSwitch: captured,
+    releaseAfterBirchVisible: released,
+    capturedResourceIds: lateResponseIds,
+    departedContentsAbsent: true,
+    departedSearchCleared: true,
+    returnedScopeStartsWithExplicitGrants: true,
+  });
   await navigate(page, 'Migration review');
   await expect(page.getByRole('heading', { name: 'Migration review', exact: true })).toBeVisible();
 });
@@ -319,25 +388,101 @@ test('localized search, narrow layouts, keyboard navigation, and last manager pr
   await expect(
     page.getByRole('button', { name: 'Suspend Amelia Brooks', exact: true }),
   ).toBeFocused();
-  for (const width of [320, 375, 768, 1440]) {
+  test.setTimeout(240_000);
+  for (const width of [375, 768, 1440]) {
     await page.setViewportSize({ width, height: 950 });
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
-    ).toBe(true);
+    const keyboard = new KeyboardJourney(page, width);
+    const email = `keyboard-${width}-${crypto.randomUUID().slice(0, 8)}@example.test`;
+    const recipient = page.getByRole('row').filter({ hasText: 'Jonah Reed' });
+    await scanAccessibility(page, `members-${width}`);
+
+    // Every operator action in these journeys uses browser keyboard events only.
+    await keyboard.navigate('Invitations');
+    await keyboard.activate(page.getByRole('button', { name: 'Create invitation', exact: true }));
+    await keyboard.type(page.getByRole('textbox', { name: 'Recipient email' }), email);
+    await keyboard.toggle(page.getByRole('checkbox', { name: /Market pulse/ }));
+    await scanAccessibility(page, `invitation-selection-${width}`);
+    await keyboard.activate(page.getByRole('button', { name: 'Review invitation', exact: true }));
+    await expect(page.locator('.review-resources')).toContainText('Market pulse');
+    await scanAccessibility(page, `invitation-review-${width}`);
+    await keyboard.activate(page.getByRole('button', { name: 'Create verified invitation' }));
+    await expect(page.getByRole('status').filter({ hasText: 'Invitation created.' })).toBeVisible();
+    await keyboard.activate(
+      page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }),
+    );
+    await expect(
+      page.getByRole('button', { name: 'Create invitation', exact: true }),
+    ).toBeFocused();
+    await keyboard.activate(
+      page.getByRole('button', { name: `Revoke invitation to ${email}`, exact: true }),
+    );
+    await keyboard.activate(
+      page.getByRole('dialog').getByRole('button', { name: 'Revoke invitation', exact: true }),
+    );
+    await expect(page.getByRole('row').filter({ hasText: email })).toContainText('revoked');
+
+    await keyboard.navigate('Members & access');
+    await keyboard.activate(recipient.getByRole('button', { name: 'Manage access' }));
+    const growth = page.getByRole('checkbox', { name: /Growth signals/ });
+    await expect(growth).not.toBeChecked();
+    await keyboard.toggle(growth);
+    await keyboard.type(
+      page.getByRole('textbox', { name: 'Reason for this change' }),
+      `Keyboard verified growth assignment at ${width} pixels`,
+    );
+    await scanAccessibility(page, `grant-selection-${width}`);
+    await keyboard.activate(page.getByRole('button', { name: 'Preview change' }));
+    await expect(page.getByText('1 addition', { exact: true })).toBeVisible();
+    await scanAccessibility(page, `grant-review-${width}`);
+    await keyboard.activate(page.getByRole('button', { name: 'Confirm access change' }));
+    await expect(page.getByRole('status').filter({ hasText: 'Access updated.' })).toBeVisible();
+    await keyboard.activate(
+      page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }),
+    );
+    await expect(recipient.getByRole('button', { name: 'Manage access' })).toBeFocused();
+
+    // Restore the confirmed grant through the same reviewed keyboard path.
+    await keyboard.activate(recipient.getByRole('button', { name: 'Manage access' }));
+    await expect(growth).toBeChecked();
+    await keyboard.toggle(growth);
+    await keyboard.type(
+      page.getByRole('textbox', { name: 'Reason for this change' }),
+      `Complete keyboard verification at ${width} pixels`,
+    );
+    await keyboard.activate(page.getByRole('button', { name: 'Preview change' }));
+    await expect(page.getByRole('button', { name: 'Confirm access change' })).toBeDisabled();
+    await keyboard.toggle(
+      page.getByRole('checkbox', { name: /I confirm removal of 1 resource grant/ }),
+    );
+    await keyboard.activate(page.getByRole('button', { name: 'Confirm access change' }));
+    await expect(page.getByRole('status').filter({ hasText: 'Access updated.' })).toBeVisible();
+    await keyboard.activate(
+      page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }),
+    );
+    await keyboard.activate(recipient.getByRole('button', { name: 'Manage access' }));
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(recipient.getByRole('button', { name: 'Manage access' })).toBeFocused();
+    await keyboard.attachEvidence();
   }
+  await page.setViewportSize({ width: 320, height: 950 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await writeInteractionEvidence(page);
 });
 
 test('explicit panel fault injection leaves independent panels usable and supports recovery', async ({
   page,
 }) => {
-  await page.route('**/audit-events?limit=5', (route) =>
+  await page.route('**/projects/*/resources?limit=100&view=granted&locale=en', (route) =>
     route.fulfill({
       status: 500,
       contentType: 'application/json',
       body: JSON.stringify({
         error: {
           code: 'internal_error',
-          message: 'Injected audit panel failure for browser resilience verification.',
+          message: 'Injected resource panel failure for browser resilience verification.',
           correlation_id: '00000000-0000-4000-8000-000000000999',
         },
       }),
@@ -346,11 +491,24 @@ test('explicit panel fault injection leaves independent panels usable and suppor
   await login(page, 'Amelia Brooks');
   await expect(page.getByRole('heading', { name: 'Good to see you, Amelia.' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Your resource collection' })).toBeVisible();
-  await expect(page.locator('.resource-preview')).toHaveCount(3);
-  await expect(page.getByRole('alert')).toContainText('Injected audit panel failure');
-  await page.unroute('**/audit-events?limit=5');
+  await expect(page.getByLabel('Organization', { exact: true })).toHaveValue(
+    '20000000-0000-4000-8000-000000000001',
+  );
+  await expect(page.getByLabel('Project', { exact: true })).toHaveValue(
+    '30000000-0000-4000-8000-000000000001',
+  );
+  await expect(page.locator('.stat-card').nth(1).locator('strong')).toHaveText(/^[1-9]\d*$/);
+  await expect(page.locator('.activity-preview .audit-event').first()).toBeVisible();
+  await expect(page.locator('.resource-preview')).toHaveCount(0);
+  await expect(page.getByRole('alert')).toContainText('Injected resource panel failure');
+  await page.locator('.stat-card').nth(1).press('Enter');
+  await expect(page.getByRole('row').filter({ hasText: 'Amelia Brooks' })).toBeVisible();
+  await navigate(page, 'Overview');
+  await expect(page.getByRole('alert')).toContainText('Injected resource panel failure');
+  await page.unroute('**/projects/*/resources?limit=100&view=granted&locale=en');
   await page.getByRole('button', { name: 'Retry', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(page.locator('.resource-preview')).toHaveCount(3);
 });
 
 test('real competing grant command produces 412, preserves intent, and requires another review', async ({
