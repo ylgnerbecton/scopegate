@@ -3,7 +3,7 @@
 import logging
 import os
 import signal
-import threading
+import time
 
 from scopegate import telemetry
 from scopegate.config import get_settings
@@ -12,15 +12,21 @@ from scopegate.services.delivery import process_batch, purge
 
 
 def main() -> None:
+    stopping = False
+
+    def stop(*_args: object) -> None:
+        # Signal handlers must not acquire locks held by the interrupted thread.
+        nonlocal stopping
+        stopping = True
+
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
     get_settings()
     telemetry.initialize()
-    stopped = threading.Event()
-    signal.signal(signal.SIGTERM, lambda *_: stopped.set())
-    signal.signal(signal.SIGINT, lambda *_: stopped.set())
     logger = logging.getLogger("scopegate.worker")
     logging.basicConfig(level=logging.INFO)
     owner = f"worker:{os.getpid()}"
-    while not stopped.is_set():
+    while not stopping:
         try:
             result = process_batch(owner, limit=1)
             if any(result.values()):
@@ -28,7 +34,10 @@ def main() -> None:
             purge()
         except Exception:
             logger.error("delivery_cycle_failed")
-        stopped.wait(1)
+        for _ in range(10):
+            if stopping:
+                break
+            time.sleep(0.1)
     get_engine().dispose()
     telemetry.flush()
 
