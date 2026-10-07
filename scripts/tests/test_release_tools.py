@@ -92,6 +92,27 @@ def test_runner_preserves_real_nonzero_command_exit(tmp_path):
     assert "Error 7" in (tmp_path / "artifacts/gate/command.log").read_text()
 
 
+def test_failed_gate_console_diagnostic_is_sanitized_and_bounded(tmp_path, capsys):
+    secret = "fixture-diagnostic-sensitive-value"
+    gate = tiny_gate(tmp_path, "lint", f"printf '%s\\n' '{secret}' '{tmp_path}'; exit 7")
+    record, _ = execute_gate(tmp_path, gate, "f" * 40, tmp_path / "artifacts/gate", [],
+                             os.environ.copy(), [secret], 10)
+    output = capsys.readouterr().out
+    assert record["status"] == "failed" and record["exit_code"] == 2
+    assert "Error 7" in output and "[REDACTED]" in output and "<workspace>" in output
+    assert secret not in output and str(tmp_path) not in output
+    assert len(output) < 12100
+
+
+def test_failed_gate_console_omits_early_lines_from_long_logs(tmp_path, capsys):
+    gate = tiny_gate(tmp_path, "lint", "printf 'early-only\\n'; seq 1 200; exit 7")
+    execute_fixture(tmp_path, gate)
+    output = capsys.readouterr().out
+    assert "early-only" not in output and "200" in output and "Error 7" in output
+    assert "early-only" in (tmp_path / "artifacts/gate/command.log").read_text()
+    assert len(output.splitlines()) <= 81
+
+
 def test_runner_pass_records_real_command_and_hashed_artifacts(tmp_path):
     record, tests = execute_fixture(tmp_path, tiny_gate(tmp_path, "lint", "echo fixture-check-ran"))
     assert record["status"] == "passed" and record["exit_code"] == 0 and tests == []

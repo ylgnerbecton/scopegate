@@ -236,6 +236,9 @@ def execute_gate(root, gate, revision, output, previous, environment, secrets, t
               "command": gate["planned_entrypoint"], "exit_code": exit_code, "revision": revision,
               "started_at": started, "finished_at": finished, "environment": metadata or public_environment(),
               "artifacts": [artifact(root, path) for path in [log_path, result_path, *reports]]}
+    if status == "failed":
+        tail = "\n".join(log_path.read_text(encoding="utf-8").splitlines()[-80:])[-12000:]
+        print(f"{gate['id']} failure output (sanitized tail):\n{tail}", flush=True)
     return record, tests
 
 
